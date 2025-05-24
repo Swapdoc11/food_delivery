@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from "react";
-
+import { API_BASE_URL } from "@/utils/api";
 
 export default function AddProductForm() {
     const [form, setForm] = useState({
@@ -10,6 +10,7 @@ export default function AddProductForm() {
         category: "",
         image: null,
     });
+    const [loading, setLoading] = useState(false);
 
     const handleChange = (e) => {
         const { name, value, files } = e.target;
@@ -19,15 +20,47 @@ export default function AddProductForm() {
         }));
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        // TODO: Add form submission logic (e.g., API call)
-        alert("Food item added!");
+        setLoading(true);
+
+        try {
+            const formData = new FormData();
+            formData.append("name", form.name);
+            formData.append("description", form.description);
+            formData.append("price", form.price);
+            formData.append("category", form.category);
+            if (form.image) {
+                formData.append("image", form.image);
+            }
+
+            const res = await fetch(`${API_BASE_URL}/add_product`, {
+                method: "POST",
+                body: formData,
+            });
+
+            if (res.ok) {
+                setForm({
+                    name: "",
+                    description: "",
+                    price: "",
+                    category: "",
+                    image: null,
+                });
+                alert("Food item added!");
+            } else {
+                const data = await res.json();
+                alert("Failed to add product: " + (data?.error || "Unknown error"));
+            }
+        } catch (err) {
+            alert("Error: " + err.message);
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
-        // <div className="max-w-md mx-auto mt-10 p-6 bg-white rounded shadow">
-            <>
+        <>
             <h2 className="text-2xl font-bold mb-6">Add New Food Item</h2>
             <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
@@ -88,11 +121,11 @@ export default function AddProductForm() {
                 <button
                     type="submit"
                     className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
+                    disabled={loading}
                 >
-                    Add Food Item
+                    {loading ? "Adding..." : "Add Food Item"}
                 </button>
             </form>
-            </>
-        // </div>
+        </>
     );
 }
