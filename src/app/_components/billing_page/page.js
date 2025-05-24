@@ -12,6 +12,13 @@ const BillingPage = () => {
         { id: 3, name: 'Pasta', price: 199 },
         { id: 4, name: 'French Fries', price: 99 },
         { id: 5, name: 'Fries', price: 69 },
+        { id: 6, name: 'Sandwich', price: 129 },
+        { id: 7, name: 'Salad', price: 119 },
+        { id: 8, name: 'Noodles', price: 159 },
+        { id: 9, name: 'Wrap', price: 139 },
+        { id: 10, name: 'Soup', price: 109 },
+        { id: 11, name: 'Taco', price: 149 },
+        { id: 12, name: 'Samosa', price: 49 },
     ];
 
     const addToCart = (product) => {
@@ -39,6 +46,74 @@ const BillingPage = () => {
     const filteredProducts = dummyProducts.filter(product =>
         product.name.toLowerCase().includes(search.toLowerCase())
     );
+
+    // Responsive: detect window width
+    const isBrowser = typeof window !== "undefined";
+    let itemsToShow = 9;
+    if (isBrowser) {
+        const width = window.innerWidth;
+        if (width < 1024) { // mobile/tablet
+            itemsToShow = 6;
+        }
+    }
+
+    // For SSR/CSR consistency, use a state for width
+    const [windowWidth, setWindowWidth] = useState(isBrowser ? window.innerWidth : 1200);
+    if (isBrowser) {
+        window.onresize = () => setWindowWidth(window.innerWidth);
+    }
+    const isMobileOrTablet = windowWidth < 1024;
+    const maxItems = isMobileOrTablet ? 6 : 9;
+
+    // Scrollable container style
+    const scrollStyle = isMobileOrTablet
+        ? filteredProducts.length > 6
+            ? "max-h-96 overflow-y-auto"
+            : ""
+        : filteredProducts.length > 9
+            ? "max-h-96 overflow-y-auto"
+            : "";
+
+    // Render products as list on mobile/tablet, grid on desktop
+    const renderProducts = () => {
+        if (isMobileOrTablet) {
+            return (
+                <ul className={`flex flex-col gap-3 ${scrollStyle}`}>
+                    {filteredProducts.map((product) => (
+                        <li key={product.id} className="border p-3 rounded flex justify-between items-center">
+                            <div>
+                                <h3 className="font-medium text-base">{product.name}</h3>
+                                <p className="text-gray-600 text-sm">₹{product.price}</p>
+                            </div>
+                            <button
+                                onClick={() => addToCart(product)}
+                                className="bg-blue-500 text-white px-3 py-1 rounded text-sm hover:bg-blue-600"
+                            >
+                                Add
+                            </button>
+                        </li>
+                    ))}
+                </ul>
+            );
+        }
+        // Desktop grid
+        return (
+            <div className={`grid grid-cols-3 gap-4 ${scrollStyle}`}>
+                {filteredProducts.map((product) => (
+                    <div key={product.id} className="border p-3 rounded flex flex-col items-center">
+                        <h3 className="font-medium text-base">{product.name}</h3>
+                        <p className="text-gray-600 text-sm">₹{product.price}</p>
+                        <button
+                            onClick={() => addToCart(product)}
+                            className="mt-2 bg-blue-500 text-white px-3 py-1 rounded text-sm hover:bg-blue-600 w-full"
+                        >
+                            Add
+                        </button>
+                    </div>
+                ))}
+            </div>
+        );
+    };
 
     // Print bill handler with attractive design
     const handlePrint = () => {
@@ -101,54 +176,37 @@ const BillingPage = () => {
     };
 
     return (
-        <div className="container mx-auto p-4">
-            <h1 className="text-2xl font-bold mb-6">Billing Page</h1>
+        <div className="max-w-5xl mx-auto p-2 sm:p-4 md:p-8">
+            <h1 className="text-2xl font-bold mb-4 sm:mb-6 text-center sm:text-left">Billing Page</h1>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="flex flex-col md:flex-row gap-4 md:gap-6">
                 {/* Products List */}
-                <div className="bg-white p-4 rounded-lg shadow">
-                    <h2 className="text-xl font-semibold mb-4">Available Items</h2>
+                <div className="bg-white p-3 sm:p-4 rounded-lg shadow flex-1">
+                    <h2 className="text-lg sm:text-xl font-semibold mb-2 sm:mb-4">Available Items</h2>
                     {/* Search Bar */}
                     <input
                         type="text"
                         placeholder="Search items..."
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        className="mb-4 w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
+                        className="mb-3 sm:mb-4 w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm"
                     />
-                    <div className="grid grid-cols-2 gap-4">
-                        {filteredProducts.length > 0 ? (
-                            filteredProducts.map((product) => (
-                                <div key={product.id} className="border p-3 rounded">
-                                    <h3 className="font-medium">{product.name}</h3>
-                                    <p className="text-gray-600">₹{product.price}</p>
-                                    <button
-                                        onClick={() => addToCart(product)}
-                                        className="mt-2 bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600"
-                                    >
-                                        Add
-                                    </button>
-                                </div>
-                            ))
-                        ) : (
-                            <div className="col-span-2 text-center text-gray-500">No items found.</div>
-                        )}
-                    </div>
+                    {renderProducts()}
                 </div>
 
                 {/* Bill Summary */}
-                <div className="bg-white p-4 rounded-lg shadow">
+                <div className="bg-white p-3 sm:p-4 rounded-lg shadow flex-1 mt-4 md:mt-0">
                     <div ref={billRef}>
-                        <h2 className="text-xl font-semibold mb-4">Bill Summary</h2>
-                        <div className="space-y-4">
+                        <h2 className="text-lg sm:text-xl font-semibold mb-2 sm:mb-4">Bill Summary</h2>
+                        <div className="space-y-3 sm:space-y-4">
                             {cart.map((item, index) => (
-                                <div key={index} className="flex justify-between items-center border-b pb-2">
-                                    <span>{item.name}</span>
+                                <div key={index} className="flex justify-between items-center border-b pb-1 sm:pb-2">
+                                    <span className="text-sm sm:text-base">{item.name}</span>
                                     <div>
-                                        <span className="mr-4">₹{item.price}</span>
+                                        <span className="mr-2 sm:mr-4 text-sm sm:text-base">₹{item.price}</span>
                                         <button
                                             onClick={() => removeFromCart(index)}
-                                            className="text-red-500 hover:text-red-700"
+                                            className="text-red-500 hover:text-red-700 text-xs sm:text-sm"
                                         >
                                             Remove
                                         </button>
@@ -156,16 +214,16 @@ const BillingPage = () => {
                                 </div>
                             ))}
                             
-                            <div className="mt-4 space-y-2">
-                                <div className="flex justify-between">
+                            <div className="mt-2 sm:mt-4 space-y-1 sm:space-y-2">
+                                <div className="flex justify-between text-sm sm:text-base">
                                     <span>Subtotal:</span>
                                     <span>₹{calculateSubTotal().toFixed(2)}</span>
                                 </div>
-                                <div className="flex justify-between">
+                                <div className="flex justify-between text-sm sm:text-base">
                                     <span>GST (18%):</span>
                                     <span>₹{calculateGST().toFixed(2)}</span>
                                 </div>
-                                <div className="flex justify-between font-bold text-lg">
+                                <div className="flex justify-between font-bold text-base sm:text-lg">
                                     <span>Total:</span>
                                     <span>₹{calculateTotal().toFixed(2)}</span>
                                 </div>
@@ -174,7 +232,7 @@ const BillingPage = () => {
                     </div>
                     <button
                         onClick={handlePrint}
-                        className="mt-6 w-full bg-green-600 text-white py-2 rounded hover:bg-green-700 transition"
+                        className="mt-4 sm:mt-6 w-full bg-green-600 text-white py-2 rounded hover:bg-green-700 transition text-sm sm:text-base"
                         disabled={cart.length === 0}
                     >
                         Print Bill
