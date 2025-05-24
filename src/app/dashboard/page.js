@@ -136,7 +136,7 @@ export default function DashboardPage() {
                     </div>
                 </header>
                 {/* Content */}
-                <main className="flex-1 p-2 sm:p-4 md:p-8 overflow-auto">
+                <main className="flex-1 p-2 sm:p-4 md:p-8 overflow-scroll">
                     {renderContent()}
                 </main>
             </div>

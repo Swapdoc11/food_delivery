@@ -21,17 +21,58 @@ const BillingPage = () => {
         { id: 12, name: 'Samosa', price: 49 },
     ];
 
+    // Add to cart: increase qty if exists, else add new
     const addToCart = (product) => {
-        setCart([...cart, product]);
+        setCart((prevCart) => {
+            const idx = prevCart.findIndex((item) => item.id === product.id);
+            if (idx !== -1) {
+                // Already in cart, increase qty
+                const updated = [...prevCart];
+                updated[idx] = { ...updated[idx], qty: updated[idx].qty + 1 };
+                return updated;
+            }
+            // Not in cart, add with qty 1
+            return [...prevCart, { ...product, qty: 1 }];
+        });
     };
 
-    const removeFromCart = (index) => {
-        const newCart = cart.filter((_, i) => i !== index);
-        setCart(newCart);
+    // Remove one quantity, or remove item if qty is 1
+    const decreaseQty = (productId) => {
+        setCart((prevCart) => {
+            const idx = prevCart.findIndex((item) => item.id === productId);
+            if (idx !== -1) {
+                if (prevCart[idx].qty > 1) {
+                    const updated = [...prevCart];
+                    updated[idx] = { ...updated[idx], qty: updated[idx].qty - 1 };
+                    return updated;
+                } else {
+                    // Remove item
+                    return prevCart.filter((item) => item.id !== productId);
+                }
+            }
+            return prevCart;
+        });
+    };
+
+    // Remove item from cart completely
+    const removeFromCart = (productId) => {
+        setCart((prevCart) => prevCart.filter((item) => item.id !== productId));
+    };
+
+    const increaseQty = (productId) => {
+        setCart((prevCart) => {
+            const idx = prevCart.findIndex((item) => item.id === productId);
+            if (idx !== -1) {
+                const updated = [...prevCart];
+                updated[idx] = { ...updated[idx], qty: updated[idx].qty + 1 };
+                return updated;
+            }
+            return prevCart;
+        });
     };
 
     const calculateSubTotal = () => {
-        return cart.reduce((total, item) => total + item.price, 0);
+        return cart.reduce((total, item) => total + item.price * item.qty, 0);
     };
 
     const calculateGST = () => {
@@ -49,21 +90,12 @@ const BillingPage = () => {
 
     // Responsive: detect window width
     const isBrowser = typeof window !== "undefined";
-    let itemsToShow = 9;
-    if (isBrowser) {
-        const width = window.innerWidth;
-        if (width < 1024) { // mobile/tablet
-            itemsToShow = 6;
-        }
-    }
-
-    // For SSR/CSR consistency, use a state for width
+    // SSR/CSR consistency for width
     const [windowWidth, setWindowWidth] = useState(isBrowser ? window.innerWidth : 1200);
     if (isBrowser) {
         window.onresize = () => setWindowWidth(window.innerWidth);
     }
     const isMobileOrTablet = windowWidth < 1024;
-    const maxItems = isMobileOrTablet ? 6 : 9;
 
     // Scrollable container style
     const scrollStyle = isMobileOrTablet
@@ -129,6 +161,7 @@ const BillingPage = () => {
                         <thead>
                             <tr>
                                 <th style="text-align:left;padding:8px 0;color:#2563eb;">Item</th>
+                                <th style="text-align:center;padding:8px 0;color:#2563eb;">Qty</th>
                                 <th style="text-align:right;padding:8px 0;color:#2563eb;">Price</th>
                             </tr>
                         </thead>
@@ -136,7 +169,8 @@ const BillingPage = () => {
                             ${cart.map(item => `
                                 <tr>
                                     <td style="padding:4px 0;">${item.name}</td>
-                                    <td style="text-align:right;padding:4px 0;">₹${item.price}</td>
+                                    <td style="text-align:center;padding:4px 0;">${item.qty}</td>
+                                    <td style="text-align:right;padding:4px 0;">₹${(item.price * item.qty).toFixed(2)}</td>
                                 </tr>
                             `).join('')}
                         </tbody>
@@ -176,7 +210,7 @@ const BillingPage = () => {
     };
 
     return (
-        <div className="max-w-5xl mx-auto p-2 sm:p-4 md:p-8">
+        <div className="max-w-9xl mx-auto p-2 sm:p-4 md:p-8">
             <h1 className="text-2xl font-bold mb-4 sm:mb-6 text-center sm:text-left">Billing Page</h1>
             
             <div className="flex flex-col md:flex-row gap-4 md:gap-6">
@@ -199,14 +233,26 @@ const BillingPage = () => {
                     <div ref={billRef}>
                         <h2 className="text-lg sm:text-xl font-semibold mb-2 sm:mb-4">Bill Summary</h2>
                         <div className="space-y-3 sm:space-y-4">
-                            {cart.map((item, index) => (
-                                <div key={index} className="flex justify-between items-center border-b pb-1 sm:pb-2">
+                            {cart.map((item) => (
+                                <div key={item.id} className="flex justify-between items-center border-b pb-1 sm:pb-2">
                                     <span className="text-sm sm:text-base">{item.name}</span>
-                                    <div>
-                                        <span className="mr-2 sm:mr-4 text-sm sm:text-base">₹{item.price}</span>
+                                    <div className="flex items-center gap-2">
                                         <button
-                                            onClick={() => removeFromCart(index)}
-                                            className="text-red-500 hover:text-red-700 text-xs sm:text-sm"
+                                            onClick={() => decreaseQty(item.id)}
+                                            className="px-2 py-1 bg-gray-200 rounded text-xs sm:text-sm font-bold hover:bg-gray-300"
+                                            aria-label="Decrease quantity"
+                                        >-</button>
+                                        <span className="mx-1 text-sm sm:text-base">{item.qty}</span>
+                                        <button
+                                            onClick={() => increaseQty(item.id)}
+                                            className="px-2 py-1 bg-gray-200 rounded text-xs sm:text-sm font-bold hover:bg-gray-300"
+                                            aria-label="Increase quantity"
+                                        >+</button>
+                                        <span className="ml-2 text-sm sm:text-base">₹{(item.price * item.qty).toFixed(2)}</span>
+                                        <button
+                                            onClick={() => removeFromCart(item.id)}
+                                            className="ml-2 text-red-500 hover:text-red-700 text-xs sm:text-sm"
+                                            aria-label="Remove item"
                                         >
                                             Remove
                                         </button>
