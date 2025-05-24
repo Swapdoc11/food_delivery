@@ -1,0 +1,1 @@
+export const conn = "mongodb://localhost:27017/fooddelivery"

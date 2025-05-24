@@ -51,7 +51,7 @@ export default function DashboardPage() {
             {/* Sidebar */}
             <aside className={`bg-white shadow-lg transition-all duration-300 ${sidebarOpen ? 'w-64' : 'w-20'} flex flex-col`}>
                 <div className="flex items-center justify-between h-16 px-4 border-b">
-                    <span className="text-xl font-bold text-indigo-600 transition-all duration-300">{sidebarOpen ? 'FoodDash' : 'FD'}</span>
+                    <span className="text-xl font-bold text-indigo-600 transition-all duration-300">{sidebarOpen ? 'Foodie' : 'FD'}</span>
                     <button
                         className="md:hidden text-gray-500"
                         onClick={() => setSidebarOpen(!sidebarOpen)}
