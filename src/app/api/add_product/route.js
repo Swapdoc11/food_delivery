@@ -1,62 +1,44 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "../../lib/db";
 import Product from "../../lib/add_product";
-import formidable from "formidable";
-import { Readable } from "stream";
+import fs from "fs";
 import path from "path";
-
-// Disable Next.js body parser
-export const config = {
-    api: {
-        bodyParser: false,
-    },
-};
-
-// Helper to convert Next.js Request to Node.js-like IncomingMessage
-async function webRequestToNodeRequest(req) {
-    const contentType = req.headers.get("content-type");
-    const contentLength = req.headers.get("content-length");
-    const headers = {};
-    if (contentType) headers["content-type"] = contentType;
-    if (contentLength) headers["content-length"] = contentLength;
-
-    // Read the body as a buffer
-    const bodyBuffer = Buffer.from(await req.arrayBuffer());
-    const stream = Readable.from(bodyBuffer);
-
-    // Attach headers to the stream (formidable expects this)
-    stream.headers = headers;
-    return stream;
-}
-
 export async function POST(req) {
     try {
         await connectDB();
 
-        // Convert the web Request to a Node.js-like stream with headers
-        const nodeReq = await webRequestToNodeRequest(req);
 
-        // Parse form data
-        const form = formidable({ multiples: false, uploadDir: "./public/uploads", keepExtensions: true });
-        const [fields, files] = await new Promise((resolve, reject) => {
-            form.parse(nodeReq, (err, fields, files) => {
-                if (err) reject(err);
-                else resolve([fields, files]);
-            });
-        });
-
-        // Get image path
-        let imagePath = "";
-        if (files.image) {
-            imagePath = "/uploads/" + path.basename(files.image.filepath);
+        const data = await req.formData();
+        const file = data.get("image");
+        if(!file) {
+            return NextResponse.json(
+                { error: "Image file is required" },
+                { status: 400 }
+            );
         }
+        if (file && file.size > 5 * 1024 * 1024) { // Check if file size exceeds 5MB
+            return NextResponse.json(
+                { error: "Image size exceeds 5MB limit" },
+                { status: 400 }
+            );
+        }
+        console.log(file)
+        const bytedata = await file.arrayBuffer(); // Ensure the file is processed correctly
+        const buffer = Buffer.from(bytedata);
+        const fileName = `${Date.now()}-${file.name}`;
+        const filePath = `./public/${fileName}`;
+        
+        fs.writeFileSync(filePath, buffer); // Save the file to the public directory
+        data.set("image", fileName); // Update the form data with the new file name
+        console.log("File saved at:", filePath);
+
 
         const product = await Product.create({
-            name: fields.name,
-            description: fields.description,
-            price: fields.price,
-            category: fields.category,
-            image: imagePath,
+            name: data.get('name'),
+            description: data.get('description'),
+            price: data.get('price'),
+            category: data.get('category'),
+            image:fileName
         });
 
         return NextResponse.json(
@@ -71,5 +53,14 @@ export async function POST(req) {
     }
 }
 export async function GET() {
-    return NextResponse.json({ message: "Hello World" }, { status: 200 });
+   try {
+        await connectDB();
+        const products = await Product.find().sort({ createdAt: -1 });
+        return NextResponse.json({ products }, { status: 200 });
+    } catch (error) {
+        return NextResponse.json(
+            { error: "Failed to fetch products", details: error.message },
+            { status: 500 }
+        );
+    }
 }

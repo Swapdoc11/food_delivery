@@ -1,21 +1,30 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 
 export default function ProductTable() {
-    // Dummy product data
-    const initialProducts = [
-        { id: 1, name: 'Pizza', price: 12.99, category: 'Italian' },
-        { id: 2, name: 'Burger', price: 8.99, category: 'Fast Food' },
-        { id: 3, name: 'Sushi', price: 15.99, category: 'Japanese' },
-        { id: 4, name: 'Pasta', price: 11.99, category: 'Italian' },
-        { id: 5, name: 'Salad', price: 7.99, category: 'Healthy' },
-    ]
-
-    const [products, setProducts] = useState(initialProducts)
+    const [products, setProducts] = useState([])
     const [searchTerm, setSearchTerm] = useState('')
     const [isEditModalOpen, setIsEditModalOpen] = useState(false)
     const [editingProduct, setEditingProduct] = useState(null)
+    const [loading, setLoading] = useState(true)
+
+    // Fetch products from API
+    useEffect(() => {
+        const fetchProducts = async () => {
+            try {
+                const res = await fetch('http://localhost:3000/api/add_product')
+                const data = await res.json()
+                // If your API returns { products: [...] }
+                setProducts(data.products || [])
+            } catch (err) {
+                setProducts([])
+            } finally {
+                setLoading(false)
+            }
+        }
+        fetchProducts()
+    }, [])
 
     // Handle search
     const handleSearch = (event) => {
@@ -33,11 +42,11 @@ export default function ProductTable() {
         setIsEditModalOpen(true)
     }
 
-    // Handle save changes
+    // Handle save changes (local only, not persisted to API)
     const handleSave = (e) => {
         e.preventDefault()
         const updatedProducts = products.map(product =>
-            product.id === editingProduct.id ? editingProduct : product
+            product._id === editingProduct._id ? editingProduct : product
         )
         setProducts(updatedProducts)
         setIsEditModalOpen(false)
@@ -57,10 +66,11 @@ export default function ProductTable() {
             </div>
 
             {/* Products Table */}
-            <div className="overflow-x-auto">
-                <table className="min-w-full bg-white rounded-lg overflow-hidden">
-                    <thead className="bg-gray-100">
+            <div className="overflow-x-auto" style={{ maxHeight: "400px", overflowY: "auto" }}>
+                <table className="min-w-full bg-white rounded-lg">
+                    <thead className="bg-gray-100 sticky top-0 z-10">
                         <tr>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Image</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Price</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
@@ -68,27 +78,52 @@ export default function ProductTable() {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200">
-                        {filteredProducts.map((product) => (
-                            <tr key={product.id}>
-                                <td className="px-6 py-4 whitespace-nowrap">{product.name}</td>
-                                <td className="px-6 py-4 whitespace-nowrap">${product.price}</td>
-                                <td className="px-6 py-4 whitespace-nowrap">{product.category}</td>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                    <button
-                                        onClick={() => handleEdit(product)}
-                                        className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600"
-                                    >
-                                        Edit
-                                    </button>
-                                </td>
+                        {loading ? (
+                            <tr>
+                                <td colSpan={5} className="px-6 py-4 text-center text-gray-400">Loading...</td>
                             </tr>
-                        ))}
+                        ) : filteredProducts.length === 0 ? (
+                            <tr>
+                                <td colSpan={5} className="px-6 py-4 text-center text-gray-400">No products found.</td>
+                            </tr>
+                        ) : (
+                            filteredProducts.map((product) => (
+                                <tr key={product._id}>
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                        {product.image ? (
+                                            <img
+                                                src={
+                                                    product.image.startsWith("http")
+                                                        ? product.image
+                                                        : `${product.image}`
+                                                }
+                                                alt={product.name}
+                                                className="w-12 h-12 object-cover rounded"
+                                            />
+                                        ) : (
+                                            <span className="text-gray-400">No Image</span>
+                                        )}
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap">{product.name}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap">₹{product.price}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap">{product.category}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                        <button
+                                            onClick={() => handleEdit(product)}
+                                            className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600"
+                                        >
+                                            Edit
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))
+                        )}
                     </tbody>
                 </table>
             </div>
 
             {/* Edit Modal */}
-            {isEditModalOpen && (
+            {isEditModalOpen && editingProduct && (
                 <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center">
                     <div className="bg-white p-6 rounded-lg w-96">
                         <h2 className="text-xl font-bold mb-4">Edit Product</h2>

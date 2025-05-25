@@ -161,14 +161,16 @@ const BillingPage = () => {
                         <thead>
                             <tr>
                                 <th style="text-align:left;padding:8px 0;color:#2563eb;">Item</th>
+                                <th style="text-align:center;padding:8px 0;color:#2563eb;">Rate</th>
                                 <th style="text-align:center;padding:8px 0;color:#2563eb;">Qty</th>
-                                <th style="text-align:right;padding:8px 0;color:#2563eb;">Price</th>
+                                <th style="text-align:right;padding:8px 0;color:#2563eb;">Amount</th>
                             </tr>
                         </thead>
                         <tbody>
                             ${cart.map(item => `
                                 <tr>
                                     <td style="padding:4px 0;">${item.name}</td>
+                                    <td style="text-align:center;padding:4px 0;">₹${item.price}</td>
                                     <td style="text-align:center;padding:4px 0;">${item.qty}</td>
                                     <td style="text-align:right;padding:4px 0;">₹${(item.price * item.qty).toFixed(2)}</td>
                                 </tr>
@@ -210,7 +212,7 @@ const BillingPage = () => {
     };
 
     return (
-        <div className="max-w-9xl mx-auto p-2 sm:p-4 md:p-8">
+        <div className="max-w-9xl mx-auto p-2 sm:p-4 md:p-1">
             <h1 className="text-2xl font-bold mb-4 sm:mb-6 text-center sm:text-left">Billing Page</h1>
             
             <div className="flex flex-col md:flex-row gap-4 md:gap-6">
@@ -229,37 +231,47 @@ const BillingPage = () => {
                 </div>
 
                 {/* Bill Summary */}
-                <div className="bg-white p-3 sm:p-4 rounded-lg shadow flex-1 mt-4 md:mt-0">
+                <div className="bg-white p-3 sm:p-4 rounded-lg shadow flex-1 mt-4 md:mt-0 max-h-[520px] overflow-y-auto">
                     <div ref={billRef}>
                         <h2 className="text-lg sm:text-xl font-semibold mb-2 sm:mb-4">Bill Summary</h2>
                         <div className="space-y-3 sm:space-y-4">
+                            {/* Bill Table Header */}
+                            <div className="flex justify-between items-center font-semibold border-b pb-2 text-xs sm:text-sm">
+                                <span className="w-1/4">Item</span>
+                                <span className="w-1/5 text-center">Rate</span>
+                                <span className="w-1/5 text-center">Qty</span>
+                                <span className="w-1/4 text-right">Amount</span>
+                                <span className="w-1/12"></span>
+                            </div>
+                            {/* Bill Items */}
                             {cart.map((item) => (
-                                <div key={item.id} className="flex justify-between items-center border-b pb-1 sm:pb-2">
-                                    <span className="text-sm sm:text-base">{item.name}</span>
-                                    <div className="flex items-center gap-2">
+                                <div key={item.id} className="flex justify-between items-center border-b pb-1 sm:pb-2 text-xs sm:text-sm">
+                                    <span className="w-1/4">{item.name}</span>
+                                    <span className="w-1/5 text-center">₹{item.price}</span>
+                                    <div className="w-1/5 flex items-center justify-center gap-1">
                                         <button
                                             onClick={() => decreaseQty(item.id)}
-                                            className="px-2 py-1 bg-gray-200 rounded text-xs sm:text-sm font-bold hover:bg-gray-300"
+                                            className="px-2 py-1 bg-gray-200 rounded text-xs font-bold hover:bg-gray-300"
                                             aria-label="Decrease quantity"
                                         >-</button>
-                                        <span className="mx-1 text-sm sm:text-base">{item.qty}</span>
+                                        <span>{item.qty}</span>
                                         <button
                                             onClick={() => increaseQty(item.id)}
-                                            className="px-2 py-1 bg-gray-200 rounded text-xs sm:text-sm font-bold hover:bg-gray-300"
+                                            className="px-2 py-1 bg-gray-200 rounded text-xs font-bold hover:bg-gray-300"
                                             aria-label="Increase quantity"
                                         >+</button>
-                                        <span className="ml-2 text-sm sm:text-base">₹{(item.price * item.qty).toFixed(2)}</span>
-                                        <button
-                                            onClick={() => removeFromCart(item.id)}
-                                            className="ml-2 text-red-500 hover:text-red-700 text-xs sm:text-sm"
-                                            aria-label="Remove item"
-                                        >
-                                            Remove
-                                        </button>
                                     </div>
+                                    <span className="w-1/4 text-right">₹{(item.price * item.qty).toFixed(2)}</span>
+                                    <button
+                                        onClick={() => removeFromCart(item.id)}
+                                        className="w-1/12 text-red-500 hover:text-red-700 text-xs"
+                                        aria-label="Remove item"
+                                    >
+                                        Remove
+                                    </button>
                                 </div>
                             ))}
-                            
+                            {/* Bill Totals */}
                             <div className="mt-2 sm:mt-4 space-y-1 sm:space-y-2">
                                 <div className="flex justify-between text-sm sm:text-base">
                                     <span>Subtotal:</span>
