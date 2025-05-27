@@ -24,13 +24,15 @@ export default function AddProductForm() {
     async function uploadToCloudinary(file) {
         const data = new FormData();
         data.append("file", file);
-        data.append("upload_preset", "YOUR_UPLOAD_PRESET"); // set in your Cloudinary dashboard
+        data.append("upload_preset", "foodie"); // set in your Cloudinary dashboard
 
         const res = await fetch("https://api.cloudinary.com/v1_1/dijkpvobx/image/upload", {
             method: "POST",
             body: data,
         });
         const json = await res.json();
+        console.log(json);
+        
         return json.secure_url; // This is the image URL
     }
 
