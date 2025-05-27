@@ -1,4 +1,5 @@
 'use client'
+import { API_BASE_URL } from '@/utils/api'
 import { useState, useEffect } from 'react'
 
 
@@ -13,7 +14,7 @@ export default function ProductTable() {
     useEffect(() => {
         const fetchProducts = async () => {
             try {
-                const res = await fetch('http://localhost:3000/api/add_product')
+                const res = await fetch(`${API_BASE_URL}/add_product`)
                 const data = await res.json()
                 // If your API returns { products: [...] }
                 setProducts(data.products || [])
