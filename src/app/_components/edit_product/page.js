@@ -92,15 +92,7 @@ export default function ProductTable() {
                                 <tr key={product._id}>
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         {product.image ? (
-                                            <img
-                                                src={
-                                                    product.image.startsWith("http")
-                                                        ? product.image
-                                                        : `${product.image}`
-                                                }
-                                                alt={product.name}
-                                                className="w-12 h-12 object-cover rounded"
-                                            />
+                                            <img src={product.image} alt={product.name} className="w-12 h-12 object-cover rounded" />
                                         ) : (
                                             <span className="text-gray-400">No Image</span>
                                         )}
