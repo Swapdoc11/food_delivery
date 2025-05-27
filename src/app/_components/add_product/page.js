@@ -20,23 +20,40 @@ export default function AddProductForm() {
         }));
     };
 
+    // Add this function to upload image to Cloudinary
+    async function uploadToCloudinary(file) {
+        const data = new FormData();
+        data.append("file", file);
+        data.append("upload_preset", "YOUR_UPLOAD_PRESET"); // set in your Cloudinary dashboard
+
+        const res = await fetch("https://api.cloudinary.com/v1_1/dijkpvobx/image/upload", {
+            method: "POST",
+            body: data,
+        });
+        const json = await res.json();
+        return json.secure_url; // This is the image URL
+    }
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
 
         try {
-            const formData = new FormData();
-            formData.append("name", form.name);
-            formData.append("description", form.description);
-            formData.append("price", form.price);
-            formData.append("category", form.category);
+            let imageUrl = "";
             if (form.image) {
-                formData.append("image", form.image);
+                imageUrl = await uploadToCloudinary(form.image);
             }
 
             const res = await fetch(`${API_BASE_URL}/add_product`, {
                 method: "POST",
-                body: formData,
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    name: form.name,
+                    description: form.description,
+                    price: form.price,
+                    category: form.category,
+                    image: imageUrl,
+                }),
             });
 
             if (res.ok) {
