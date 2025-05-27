@@ -1,16 +1,21 @@
 import { NextResponse } from "next/server";
-import { connectDB } from "../../lib/db";
+// import { connectDB } from "../../lib/db";
 import Product from "../../lib/add_product";
 import fs from "fs";
 import path from "path";
+import mongoose from "mongoose";
+import { MONGODB_URI } from "@/app/lib/db";
+import { log } from "console";
 export async function POST(req) {
     try {
-        await connectDB();
 
-
+        // await connectDB();
+        await mongoose.connect(MONGODB_URI)
+        console.log("MongoDB connected");
+        // Ensure the public directory exists
         const data = await req.formData();
         const file = data.get("image");
-        if(!file) {
+        if (!file) {
             return NextResponse.json(
                 { error: "Image file is required" },
                 { status: 400 }
@@ -27,7 +32,7 @@ export async function POST(req) {
         const buffer = Buffer.from(bytedata);
         const fileName = `${Date.now()}-${file.name}`;
         const filePath = `./public/${fileName}`;
-        
+
         fs.writeFileSync(filePath, buffer); // Save the file to the public directory
         data.set("image", fileName); // Update the form data with the new file name
         console.log("File saved at:", filePath);
@@ -38,7 +43,7 @@ export async function POST(req) {
             description: data.get('description'),
             price: data.get('price'),
             category: data.get('category'),
-            image:fileName
+            image: fileName
         });
 
         return NextResponse.json(
@@ -53,8 +58,10 @@ export async function POST(req) {
     }
 }
 export async function GET() {
-   try {
-        await connectDB();
+    try {
+        // await connectDB();
+        console.log("MongoDB connected");
+        await mongoose.connect(MONGODB_URI)
         const products = await Product.find().sort({ createdAt: -1 });
         return NextResponse.json({ products }, { status: 200 });
     } catch (error) {
