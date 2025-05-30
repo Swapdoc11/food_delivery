@@ -26,6 +26,8 @@ export async function POST(req) {
     try {
         await mongoose.connect(MONGODB_URI);
         const data = await req.json();
+        console.log("Registration data:", data);
+        // Validate required fields
         const { name, surname, country, state, city, phone, email, address, password } = data;
         if (!name || !email || !password) {
             return NextResponse.json({ error: "Name, email, and password are required." }, { status: 400 });

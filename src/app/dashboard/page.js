@@ -52,106 +52,124 @@ export default function DashboardPage() {
             case 'Billing':
                 return <BillingPage />;
             default:
-                return <div>Select a menu from the sidebar.</div>;
+                return <div>Select a menu item</div>;
         }
     }
 
     return (
-        <div className="flex h-screen bg-gray-100">
-            {/* Sidebar */}
-            {/* Mobile sidebar overlay */}
+        <div className="min-h-screen flex bg-gradient-to-br from-indigo-50 via-white to-pink-50 overflow-hidden">
+            {/* Sidebar Overlay */}
             <div
-                className={`fixed inset-0 z-30 bg-black bg-opacity-40 transition-opacity md:hidden ${sidebarOpen ? 'block' : 'hidden'}`}
+                className={`fixed inset-0 z-20 bg-gray-900/50 lg:hidden ${
+                    sidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
+                }`}
                 onClick={() => setSidebarOpen(false)}
             />
+
+            {/* Sidebar */}
             <aside
-                className={`
-                    fixed z-40 inset-y-0 left-0 bg-white shadow-lg transition-all duration-300
-                    flex flex-col
-                    w-64
-                    transform
-                    ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-                    md:static md:translate-x-0 md:w-64
-                    ${sidebarOpen ? '' : 'md:w-20'}
-                `}
-                style={{ height: '100vh' }}
+                className={`fixed lg:sticky top-0 inset-y-0 left-0 z-30 w-64 bg-white shadow-xl transition-transform duration-300 ease-in-out h-screen
+                ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 flex flex-col`}
             >
-                <div className="flex items-center justify-between h-16 px-4 border-b">
-                    <span className="text-xl font-bold text-indigo-600 transition-all duration-300">{sidebarOpen ? 'Food Delivery' : 'FD'}</span>
+                {/* Sidebar Header - Fixed */}
+                <div className="flex-shrink-0 h-16 flex items-center justify-between px-4 bg-gradient-to-r from-indigo-600 to-indigo-800">
+                    <div className="flex items-center">
+                        <span className="text-xl font-semibold text-white">Food Delivery</span>
+                    </div>
                     <button
-                        className="md:hidden text-gray-500"
-                        onClick={() => setSidebarOpen(!sidebarOpen)}
-                        aria-label="Toggle Sidebar"
+                        className="p-1 text-white hover:bg-indigo-700 rounded-md lg:hidden"
+                        onClick={() => setSidebarOpen(false)}
                     >
-                        <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+                        <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                         </svg>
                     </button>
                 </div>
-                <nav className="flex-1 py-6 px-2 space-y-2">
-                    <SidebarLink icon="🍔" label="Add Product" sidebarOpen={sidebarOpen} selected={selectedMenu} onClick={setSelectedMenu} />
-                    <SidebarLink icon="✏️" label="Edit Product" sidebarOpen={sidebarOpen} selected={selectedMenu} onClick={setSelectedMenu} />
-                    <SidebarLink icon="📊" label="Report" sidebarOpen={sidebarOpen} selected={selectedMenu} onClick={setSelectedMenu} />
-                    <SidebarLink icon="💳" label="Billing" sidebarOpen={sidebarOpen} selected={selectedMenu} onClick={setSelectedMenu} />
-                </nav>
+
+                {/* Sidebar Navigation - Scrollable */}
+                <div className="flex-1 overflow-y-auto">
+                    <nav className="p-4 space-y-2">
+                        <MenuButton
+                            icon={<svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                            </svg>}
+                            label="Add Product"
+                            active={selectedMenu === 'Add Product'}
+                            onClick={() => setSelectedMenu('Add Product')}
+                        />
+                        <MenuButton
+                            icon={<svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>}
+                            label="Edit Product"
+                            active={selectedMenu === 'Edit Product'}
+                            onClick={() => setSelectedMenu('Edit Product')}
+                        />
+                        <MenuButton
+                            icon={<svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                            </svg>}
+                            label="Report"
+                            active={selectedMenu === 'Report'}
+                            onClick={() => setSelectedMenu('Report')}
+                        />
+                        <MenuButton
+                            icon={<svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                            </svg>}
+                            label="Billing"
+                            active={selectedMenu === 'Billing'}
+                            onClick={() => setSelectedMenu('Billing')}
+                        />
+                    </nav>
+                </div>
             </aside>
 
-            {/* Main Content */}
-            <div className="flex-1 flex flex-col min-w-0 md:ml-0" style={{ minHeight: 0 }}>
-                {/* Header */}
-                <header className="flex items-center justify-between bg-white h-16 px-4 md:px-6 shadow w-full">
-                    {/* Sidebar toggle for mobile */}
-                    <button
-                        className="md:hidden mr-2 text-gray-500"
-                        onClick={() => setSidebarOpen(!sidebarOpen)}
-                        aria-label="Open Sidebar"
-                    >
-                        <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-                        </svg>
-                    </button>
-                    <div className="text-xl md:text-2xl font-semibold text-gray-700">Dashboard</div>
-                    <div className="flex items-center space-x-2 md:space-x-4">
-                        {/* Settings */}
-                        <button className="relative p-2 rounded-full hover:bg-gray-100 transition">
-                            <svg className="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            {/* Main Content Area */}
+            <div className="flex-1 flex flex-col overflow-hidden">
+                {/* Fixed Header */}
+                <header className="flex-shrink-0 h-16 bg-white shadow-sm">
+                    <div className="h-full px-4 flex items-center justify-between">
+                        <button
+                            className="p-2 rounded-md lg:hidden hover:bg-gray-100"
+                            onClick={() => setSidebarOpen(true)}
+                        >
+                            <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                             </svg>
                         </button>
-                        {/* Profile Dropdown */}
-                        <div className="relative" ref={dropdownRef}>
+
+                        {/* User Dropdown */}
+                        <div className="relative ml-auto" ref={dropdownRef}>
                             <button
-                                className="flex items-center space-x-2 p-2 rounded-full hover:bg-gray-100 transition"
-                                onClick={() => setDropdownOpen((open) => !open)}
+                                className="flex items-center space-x-2 hover:bg-gray-100 rounded-lg px-3 py-2"
+                                onClick={() => setDropdownOpen(!dropdownOpen)}
                             >
-                                <img
-                                    src="https://randomuser.me/api/portraits/men/32.jpg"
-                                    alt="Profile"
-                                    className="w-8 h-8 rounded-full object-cover"
-                                />
-                                <span className="hidden md:block font-medium text-gray-700">Admin</span>
-                                <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                                <div className="h-8 w-8 rounded-full bg-indigo-600 flex items-center justify-center">
+                                    <span className="text-white text-sm font-medium">AD</span>
+                                </div>
+                                <span className="hidden md:inline text-gray-700">Admin</span>
+                                <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                                 </svg>
                             </button>
-                            {/* Dropdown */}
+
                             {dropdownOpen && (
-                                <div className="absolute right-0 mt-2 w-40 bg-white rounded shadow-lg z-10">
-                                    <a href="#" className="block px-4 py-2 text-gray-700 hover:bg-gray-100">Profile</a>
-                                    <a href="#" className="block px-4 py-2 text-gray-700 hover:bg-gray-100">Settings</a>
-                                    <button 
+                                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-1 border">
+                                    <button
                                         onClick={handleLogout}
-                                        className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100"
+                                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                                     >
-                                        Logout
+                                        Sign out
                                     </button>
                                 </div>
                             )}
                         </div>
                     </div>
                 </header>
-                {/* Content */}
-                <main className="flex-1 p-2 sm:p-4 md:p-8 overflow-y-hidden">
+
+                {/* Main Content - Scrollable */}
+                <main className="flex-1 overflow-y-auto p-6">
                     {renderContent()}
                 </main>
             </div>
@@ -159,17 +177,18 @@ export default function DashboardPage() {
     );
 }
 
-function SidebarLink({ icon, label, sidebarOpen, selected, onClick }) {
+function MenuButton({ icon, label, active, onClick }) {
     return (
         <button
-            type="button"
-            onClick={() => onClick(label)}
-            className={`flex items-center w-full px-2 md:px-4 py-2 md:py-3 rounded-lg text-gray-700 hover:bg-indigo-50 transition font-medium
-                ${selected === label ? 'bg-indigo-100 text-indigo-700' : ''}`}
-            style={{ outline: 'none', border: 'none', background: 'none' }}
+            onClick={onClick}
+            className={`w-full flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors ${
+                active
+                    ? 'bg-indigo-50 text-indigo-600'
+                    : 'text-gray-600 hover:bg-gray-100'
+            }`}
         >
-            <span className="text-xl mr-2 md:mr-3">{icon}</span>
-            {sidebarOpen && <span className="text-sm md:text-base">{label}</span>}
+            <span className={`${active ? 'text-indigo-600' : 'text-gray-500'}`}>{icon}</span>
+            <span className="font-medium">{label}</span>
         </button>
     );
 }

@@ -6,7 +6,7 @@ import { useDispatch } from "react-redux";
 import { setCredentials } from "@/slices/authSlice";
 import { API_BASE_URL } from "@/utils/api";
 import Link from "next/link";
-import Image from "next/image";
+    import Image from "next/image";
 
 export default function LoginPage() {
     const [email, setEmail] = useState("");

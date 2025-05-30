@@ -11,7 +11,10 @@
   "dependencies": {
     "@headlessui/react": "^2.2.4",
     "@reduxjs/toolkit": "^2.8.2",
+    "bcrypt": "^6.0.0",
+    "bcryptjs": "^3.0.2",
     "formidable": "^3.5.4",
+    "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.15.0",
     "next": "^15.3.3",
     "react": "^19.0.0",
