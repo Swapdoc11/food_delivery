@@ -6,12 +6,17 @@ import Link from 'next/link';
 import ProductTable from '../_components/edit_product/page';
 import ReportPage from '../_components/report/page';
 import BillingPage from '../_components/billing_page/page';
+import { useRouter } from 'next/navigation';
+import { useDispatch } from 'react-redux';
+import { logout } from '@/slices/authSlice';
 
 export default function DashboardPage() {
     const [sidebarOpen, setSidebarOpen] = useState(true);
     const [selectedMenu, setSelectedMenu] = useState('Add Product');
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const dropdownRef = useRef(null);
+    const router = useRouter();
+    const dispatch = useDispatch();
 
     // Close dropdown when clicking outside
     useEffect(() => {
@@ -29,6 +34,11 @@ export default function DashboardPage() {
             document.removeEventListener('mousedown', handleClickOutside);
         };
     }, [dropdownOpen]);
+
+    const handleLogout = () => {
+        dispatch(logout());
+        router.push('/login');
+    };
 
     // Render content based on selected menu
     function renderContent() {
@@ -129,7 +139,12 @@ export default function DashboardPage() {
                                 <div className="absolute right-0 mt-2 w-40 bg-white rounded shadow-lg z-10">
                                     <a href="#" className="block px-4 py-2 text-gray-700 hover:bg-gray-100">Profile</a>
                                     <a href="#" className="block px-4 py-2 text-gray-700 hover:bg-gray-100">Settings</a>
-                                    <a href="#" className="block px-4 py-2 text-gray-700 hover:bg-gray-100">Logout</a>
+                                    <button 
+                                        onClick={handleLogout}
+                                        className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100"
+                                    >
+                                        Logout
+                                    </button>
                                 </div>
                             )}
                         </div>
