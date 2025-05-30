@@ -6,17 +6,31 @@ import Link from 'next/link';
 import ProductTable from '../_components/edit_product/page';
 import ReportPage from '../_components/report/page';
 import BillingPage from '../_components/billing_page/page';
+import TablesLayout from '../_components/tables/page';
 import { useRouter } from 'next/navigation';
 import { useDispatch } from 'react-redux';
 import { logout } from '@/slices/authSlice';
 
 export default function DashboardPage() {
     const [sidebarOpen, setSidebarOpen] = useState(true);
-    const [selectedMenu, setSelectedMenu] = useState('Add Product');
+    const [selectedMenu, setSelectedMenu] = useState('Tables'); // Default to Tables when coming from billing
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const dropdownRef = useRef(null);
     const router = useRouter();
     const dispatch = useDispatch();
+
+    // Initialize selected menu from localStorage or URL if available
+    useEffect(() => {
+        const savedMenu = localStorage.getItem('selectedMenu');
+        if (savedMenu) {
+            setSelectedMenu(savedMenu);
+        }
+    }, []);
+
+    // Save selected menu to localStorage
+    useEffect(() => {
+        localStorage.setItem('selectedMenu', selectedMenu);
+    }, [selectedMenu]);
 
     // Close dropdown when clicking outside
     useEffect(() => {
@@ -51,6 +65,8 @@ export default function DashboardPage() {
                 return <ReportPage />;
             case 'Billing':
                 return <BillingPage />;
+            case 'Tables':
+                return <TablesLayout />;
             default:
                 return <div>Select a menu item</div>;
         }
@@ -120,6 +136,14 @@ export default function DashboardPage() {
                             label="Billing"
                             active={selectedMenu === 'Billing'}
                             onClick={() => setSelectedMenu('Billing')}
+                        />
+                        <MenuButton
+                            icon={<svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                            </svg>}
+                            label="Tables"
+                            active={selectedMenu === 'Tables'}
+                            onClick={() => setSelectedMenu('Tables')}
                         />
                     </nav>
                 </div>
