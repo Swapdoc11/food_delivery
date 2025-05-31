@@ -6,78 +6,97 @@
 import { useSelector, useDispatch } from "react-redux";
 import { setCredentials, logout } from "@/slices/authSlice";
 import { API_BASE_URL } from "@/utils/api";
-import { useEffect } from "react";
+import { useEffect, useCallback, useMemo } from "react";
 
 export function useAuth() {
+  // Group all state selectors together
   const { accessToken, refreshToken, user } = useSelector((state) => state.auth);
   const dispatch = useDispatch();
 
-  // Setup auto refresh
-  useEffect(() => {
-    let refreshTimeout;
-
-    const setupRefreshTimer = () => {
-      if (!accessToken) return;
-
+  // Decode JWT token helper function - moved outside of callback to avoid recreating on each render
+  const decodeJWT = useMemo(() => {
+    return (token) => {
       try {
-        const payload = JSON.parse(atob(accessToken.split(".")[1]));
-        const expiryTime = payload.exp * 1000; // Convert to milliseconds
-        const timeUntilExpiry = expiryTime - Date.now();
-        
-        // Refresh 1 minute before expiry
-        const refreshTime = Math.max(0, timeUntilExpiry - 60000);
-        
-        refreshTimeout = setTimeout(getValidAccessToken, refreshTime);
+        return JSON.parse(atob(token.split(".")[1]));
       } catch (error) {
-        console.error('Error setting up refresh timer:', error);
+        console.error('Error decoding JWT:', error);
+        return null;
       }
     };
+  }, []);
 
-    setupRefreshTimer();
-    return () => clearTimeout(refreshTimeout);
-  }, [accessToken]);
+  // Memoize token validation check
+  const isTokenValid = useMemo(() => {
+    if (!accessToken) return false;
+    const payload = decodeJWT(accessToken);
+    return payload && payload.exp * 1000 > Date.now();
+  }, [accessToken, decodeJWT]);
 
-  // Call this before any protected API call
-  async function getValidAccessToken() {
+  // Memoize getValidAccessToken to prevent unnecessary recreations
+  const getValidAccessToken = useCallback(async () => {
     if (!accessToken) return null;
-
+    
     try {
-      // Check if token is expired
-      const payload = JSON.parse(atob(accessToken.split(".")[1]));
-      if (payload.exp * 1000 > Date.now()) {
-        return accessToken; // Token still valid
+      // If current token is valid, return it
+      if (isTokenValid) {
+        return accessToken;
       }
 
-      // Token expired, try refresh
+      // If no refresh token, logout
       if (!refreshToken) {
         dispatch(logout());
         return null;
       }
 
+      // Attempt to refresh the token
       const res = await fetch(`${API_BASE_URL}/refresh`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ refreshToken }),
       });
 
-      const data = await res.json();
-      if (res.ok) {
-        dispatch(setCredentials({
-          accessToken: data.accessToken,
-          refreshToken: data.refreshToken,
-          user,
-        }));
-        return data.accessToken;
-      } else {
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        console.error('Token refresh failed:', errorData);
         dispatch(logout());
         return null;
       }
+
+      const data = await res.json();
+      dispatch(setCredentials({
+        accessToken: data.accessToken,
+        refreshToken: data.refreshToken,
+        user, // Preserve current user data
+      }));
+      return data.accessToken;
+
     } catch (error) {
-      console.error('Error refreshing token:', error);
+      console.error('Error in token refresh process:', error);
       dispatch(logout());
       return null;
     }
-  }
+  }, [accessToken, refreshToken, user, dispatch, isTokenValid]);
 
-  return { accessToken, refreshToken, user, getValidAccessToken };
+  // Perform token validation check on mount and when dependencies change
+  useEffect(() => {
+    const validateToken = async () => {
+      try {
+        await getValidAccessToken();
+      } catch (error) {
+        console.error('Token validation failed:', error);
+        dispatch(logout());
+      }
+    };
+    
+    validateToken();
+  }, [getValidAccessToken, dispatch]);
+
+  // Return authenticated state and methods
+  return {
+    accessToken,
+    refreshToken,
+    user,
+    getValidAccessToken,
+    isAuthenticated: Boolean(user && isTokenValid),
+  };
 }

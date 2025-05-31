@@ -1,6 +1,7 @@
 'use client'
 import { API_BASE_URL } from '@/utils/api'
 import { useState, useEffect } from 'react'
+import Image from 'next/image'
 
 
 export default function ProductTable() {
@@ -106,43 +107,41 @@ export default function ProductTable() {
                                 </tr>
                             ) : filteredProducts.length === 0 ? (
                                 <tr>
-                                    <td colSpan={5} className="px-6 py-8 text-center">
-                                        <div className="text-gray-500 text-sm">No products found matching your search.</div>
+                                    <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
+                                        No products found
                                     </td>
                                 </tr>
                             ) : (
-                                filteredProducts.map((product) => (
-                                    <tr key={product._id} className="hover:bg-gray-50 transition-colors">
+                                filteredProducts.map(product => (
+                                    <tr key={product._id}>
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            {product.image ? (
-                                                <img src={product.image} alt={product.name} className="w-14 h-14 object-cover rounded-lg shadow-sm" />
-                                            ) : (
-                                                <div className="w-14 h-14 rounded-lg bg-gray-100 flex items-center justify-center">
-                                                    <svg className="h-6 w-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                                    </svg>
-                                                </div>
-                                            )}
+                                            <div className="relative h-16 w-16">
+                                                <Image
+                                                    src={product.image || '/foodie.png'}
+                                                    alt={product.name}
+                                                    fill
+                                                    className="object-cover rounded-lg"
+                                                    sizes="64px"
+                                                />
+                                            </div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <div className="text-sm font-medium text-gray-900">{product.name}</div>
+                                            <div className="text-sm text-gray-500">{product.description}</div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="text-sm text-gray-900">₹{product.price.toFixed(2)}</div>
+                                            <div className="text-sm text-gray-900">₹{product.price}</div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            <span className="px-3 py-1 text-xs font-medium rounded-full bg-indigo-100 text-indigo-800">
+                                            <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-indigo-100 text-indigo-800">
                                                 {product.category}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
+                                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                             <button
                                                 onClick={() => handleEdit(product)}
-                                                className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
+                                                className="text-indigo-600 hover:text-indigo-900 focus:outline-none focus:underline"
                                             >
-                                                <svg className="h-4 w-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                                </svg>
                                                 Edit
                                             </button>
                                         </td>

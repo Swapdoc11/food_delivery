@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useDispatch, useSelector } from 'react-redux';
 import { 
@@ -31,27 +31,27 @@ export default function TableBillingClient({ tableId }) {
     const [search, setSearch] = useState('');
     const [error, setError] = useState(null);
     
+    // Group all useSelector hooks together
     const isInitialized = useSelector(selectIsInitialized);
-    const tables = Array.from({ length: 9 }, (_, i) => i + 1);
-    
-    // Initialize table state
-    useEffect(() => {
-        dispatch(initializeTableState());
-    }, [dispatch]);
-
-    // Don't render content until initialized
-    if (!isInitialized) {
-        return (
-            <div className="flex items-center justify-center min-h-screen">
-                <div className="text-lg text-gray-600">Loading...</div>
-            </div>
-        );
-    }
-
     const allTables = useSelector(selectTables);
+    const tableItems = useSelector(state => selectTableItems(state, tableId));
     
-    console.log('TableBillingClient rendered with tableId:', tableId);
+    const tables = Array.from({ length: 9 }, (_, i) => i + 1);
 
+    // Calculate totals with useMemo to optimize performance
+    const calculateSubTotal = useCallback(() => {
+        return tableItems.reduce((total, item) => total + (item.price * item.qty), 0);
+    }, [tableItems]);
+
+    const calculateGST = useCallback(() => {
+        return calculateSubTotal() * 0.18; // 18% GST
+    }, [calculateSubTotal]);
+
+    const calculateTotal = useCallback(() => {
+        return calculateSubTotal() + calculateGST();
+    }, [calculateSubTotal, calculateGST]);
+
+    // Initialize table state
     useEffect(() => {
         if (!tableId) {
             console.log('No tableId, redirecting to tables');
@@ -60,6 +60,7 @@ export default function TableBillingClient({ tableId }) {
         }
 
         try {
+            dispatch(initializeTableState());
             dispatch(setActiveTable(tableId));
             return () => dispatch(setActiveTable(null));
         } catch (err) {
@@ -68,34 +69,17 @@ export default function TableBillingClient({ tableId }) {
         }
     }, [tableId, dispatch]);
 
-    // Use memoized selectors
-    const tableItems = useSelector(state => {
-        try {
-            return selectTableItems(state, tableId) || [];
-        } catch (err) {
-            console.error('Error selecting table items:', err);
-            return [];
-        }
-    });
-
-    // Calculate totals
-    const calculateSubTotal = () => {
-        return tableItems.reduce((total, item) => total + (item.price * item.qty), 0);
-    };
-
-    const calculateGST = () => {
-        return calculateSubTotal() * 0.18; // 18% GST
-    };
-
-    const calculateTotal = () => {
-        return calculateSubTotal() + calculateGST();
-    };
-
-    const handleTableSwitch = (newTableId) => {
+    // Handler functions using useCallback to prevent unnecessary rerenders
+    const handleTableSwitch = useCallback((newTableId) => {
         router.push(`/dashboard/billing/${newTableId}`);
-    };
+    }, [router]);
 
-    const handlePrint = () => {
+    const handleClearTable = useCallback(() => {
+        dispatch(clearTable({ tableId }));
+        alert('Table cleared successfully!');
+    }, [dispatch, tableId]);
+
+    const handlePrint = useCallback(() => {
         const printContents = `
             <div style="max-width:500px;margin:auto;padding:20px;font-family:system-ui,-apple-system,sans-serif;">
                 <div style="text-align:center;padding-bottom:20px;border-bottom:2px solid #4f46e5;">
@@ -160,12 +144,16 @@ export default function TableBillingClient({ tableId }) {
             printWindow.print();
             printWindow.close();
         }, 250);
-    };
+    }, [tableId, tableItems, calculateSubTotal, calculateGST, calculateTotal]);
 
-    const handleClearTable = () => {
-        dispatch(clearTable({ tableId }));
-        alert('Table cleared successfully!');
-    };
+    // Show loading state while initializing
+    if (!isInitialized) {
+        return (
+            <div className="flex items-center justify-center min-h-screen">
+                <div className="text-lg text-gray-600">Loading...</div>
+            </div>
+        );
+    }
 
     if (error) {
         return (
@@ -202,13 +190,20 @@ export default function TableBillingClient({ tableId }) {
                         </button>
                     ))}
                 </div>
-            </div>
-
-            <div className="flex justify-between items-center mb-8">
+            </div>            <div className="flex justify-between items-center mb-8">
                 <div>
                     <h2 className="text-2xl font-bold text-gray-800">Table {tableId}</h2>
                     <p className="text-gray-600 mt-1">Manage orders for this table</p>
                 </div>
+                <button
+                    onClick={() => router.push('/dashboard')}
+                    className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200"
+                >
+                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                    </svg>
+                    Back to Dashboard
+                </button>
             </div>
             
             <div className="flex flex-col lg:flex-row gap-6">

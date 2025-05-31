@@ -1,6 +1,7 @@
 "use client";
 import React, { useState } from "react";
 import { API_BASE_URL } from "@/utils/api";
+import Image from "next/image";
 
 export default function AddProductForm() {
     const [form, setForm] = useState({
@@ -178,11 +179,15 @@ export default function AddProductForm() {
 
                 {form.image && (
                     <div className="mt-4">
-                        <img
-                            src={URL.createObjectURL(form.image)}
-                            alt="Preview"
-                            className="h-32 object-cover rounded-lg shadow-sm"
-                        />
+                        <div className="relative h-32 w-48">
+                            <Image
+                                src={URL.createObjectURL(form.image)}
+                                alt="Preview"
+                                fill
+                                className="object-cover rounded-lg shadow-sm"
+                                sizes="(max-width: 768px) 100vw, 192px"
+                            />
+                        </div>
                     </div>
                 )}
 
