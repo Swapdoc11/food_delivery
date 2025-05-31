@@ -126,7 +126,7 @@ export default function ReportPage() {
                     <h3 className="text-lg font-semibold text-gray-900 mb-4">Revenue Breakdown</h3>
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <div className="p-4 bg-indigo-50 rounded-lg">
-                            <div className="text-sm text-indigo-600 font-medium">Today's Sales</div>
+                            <div className="text-sm text-indigo-600 font-medium">Today&apos;s Sales</div>
                             <div className="text-2xl font-semibold text-indigo-900 mt-1">₹12,426</div>
                             <div className="text-xs text-indigo-600 mt-2">+15.3% from yesterday</div>
                         </div>

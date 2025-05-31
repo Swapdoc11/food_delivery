@@ -1,11 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   eslint: {
-    // Don't prevent deployment if there are ESLint warnings
+    // Warning instead of error for some rules
     ignoreDuringBuilds: true,
   },
   images: {
-    domains: ['localhost'],
     remotePatterns: [
       {
         protocol: 'https',
@@ -17,6 +16,10 @@ const nextConfig = {
       },
     ],
   },
+  // Strict mode can help catch hooks errors during development
+  reactStrictMode: true,
+  // Improve production performance
+  swcMinify: true,
 };
 
 export default nextConfig;

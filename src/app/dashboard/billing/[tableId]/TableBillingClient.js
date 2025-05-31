@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useDispatch, useSelector } from 'react-redux';
 import { 
@@ -30,44 +30,43 @@ export default function TableBillingClient({ tableId }) {
     const dispatch = useDispatch();
     const [search, setSearch] = useState('');
     const [error, setError] = useState(null);
-    
-    // Group all useSelector hooks at the top level
+
+    // Move all hooks to the top level
     const isInitialized = useSelector(selectIsInitialized);
     const allTables = useSelector(selectTables);
     const tableItems = useSelector(state => selectTableItems(state, tableId)) || [];
     
-    const tables = Array.from({ length: 9 }, (_, i) => i + 1);
+    const tables = useMemo(() => {
+        return Array.from({ length: 9 }, (_, i) => i + 1);
+    }, []);
 
-    // Calculate totals with useCallback to optimize performance
-    const calculateSubTotal = useCallback(() => {
-        if (!tableItems.length) return 0;
+    // Calculate totals using useMemo to optimize performance
+    const subtotal = useMemo(() => {
         return tableItems.reduce((total, item) => total + (item.price * item.qty), 0);
     }, [tableItems]);
 
-    const calculateGST = useCallback(() => {
-        const subtotal = calculateSubTotal();
+    const gst = useMemo(() => {
         return subtotal * 0.18; // 18% GST
-    }, [calculateSubTotal]);
+    }, [subtotal]);
 
-    const calculateTotal = useCallback(() => {
-        return calculateSubTotal() + calculateGST();
-    }, [calculateSubTotal, calculateGST]);
+    const total = useMemo(() => {
+        return subtotal + gst;
+    }, [subtotal, gst]);
 
     // Initialize table state
     useEffect(() => {
         dispatch(initializeTableState());
         
-        if (!tableId) {
+        if (tableId) {
+            try {
+                dispatch(setActiveTable(tableId));
+            } catch (err) {
+                console.error('Error setting active table:', err);
+                setError('Failed to load table data');
+            }
+        } else {
             console.log('No tableId, redirecting to tables');
             setError('Invalid table ID');
-            return;
-        }
-
-        try {
-            dispatch(setActiveTable(tableId));
-        } catch (err) {
-            console.error('Error setting active table:', err);
-            setError('Failed to load table data');
         }
 
         return () => {
@@ -75,7 +74,7 @@ export default function TableBillingClient({ tableId }) {
         };
     }, [tableId, dispatch]);
 
-    // Handler functions using useCallback to prevent unnecessary rerenders
+    // Handler functions using useCallback
     const handleTableSwitch = useCallback((newTableId) => {
         router.push(`/dashboard/billing/${newTableId}`);
     }, [router]);
@@ -120,15 +119,15 @@ export default function TableBillingClient({ tableId }) {
                 <div style="margin-top:20px;padding-top:20px;border-top:1px solid #eee;">
                     <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
                         <span style="color:#666;">Subtotal:</span>
-                        <span>₹${calculateSubTotal().toFixed(2)}</span>
+                        <span>₹${subtotal.toFixed(2)}</span>
                     </div>
                     <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
                         <span style="color:#666;">GST (18%):</span>
-                        <span>₹${calculateGST().toFixed(2)}</span>
+                        <span>₹${gst.toFixed(2)}</span>
                     </div>
                     <div style="display:flex;justify-content:space-between;margin-top:12px;padding-top:12px;border-top:1px dashed #eee;font-weight:bold;">
                         <span>Total:</span>
-                        <span>₹${calculateTotal().toFixed(2)}</span>
+                        <span>₹${total.toFixed(2)}</span>
                     </div>
                 </div>
 
@@ -150,7 +149,7 @@ export default function TableBillingClient({ tableId }) {
             printWindow.print();
             printWindow.close();
         }, 250);
-    }, [tableId, tableItems, calculateSubTotal, calculateGST, calculateTotal]);
+    }, [tableId, tableItems, subtotal, gst, total]);
 
     // Show loading state while initializing
     if (!isInitialized) {
@@ -313,15 +312,15 @@ export default function TableBillingClient({ tableId }) {
                                 <div className="border-t pt-4 mt-4">
                                     <div className="flex justify-between text-sm">
                                         <span className="text-gray-600">Subtotal:</span>
-                                        <span className="font-medium">₹{calculateSubTotal().toFixed(2)}</span>
+                                        <span className="font-medium">₹{subtotal.toFixed(2)}</span>
                                     </div>
                                     <div className="flex justify-between text-sm mt-2">
                                         <span className="text-gray-600">GST (18%):</span>
-                                        <span className="font-medium">₹{calculateGST().toFixed(2)}</span>
+                                        <span className="font-medium">₹{gst.toFixed(2)}</span>
                                     </div>
                                     <div className="flex justify-between text-lg font-semibold mt-4 pt-4 border-t text-indigo-600">
                                         <span>Total:</span>
-                                        <span>₹{calculateTotal().toFixed(2)}</span>
+                                        <span>₹{total.toFixed(2)}</span>
                                     </div>
                                 </div>
 
