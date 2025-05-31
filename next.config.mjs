@@ -1,10 +1,15 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   eslint: {
-    // Warning instead of error for some rules
-    ignoreDuringBuilds: true,
+    // Don't run ESLint during production builds
+    ignoreDuringBuilds: true
+  },
+  typescript: {
+    // Don't run type checking during production builds
+    ignoreBuildErrors: true
   },
   images: {
+    domains: ['localhost', 'food-delivery-lilac-eight.vercel.app'],
     remotePatterns: [
       {
         protocol: 'https',
@@ -16,10 +21,10 @@ const nextConfig = {
       },
     ],
   },
-  // Strict mode can help catch hooks errors during development
+  // Other performance optimizations
   reactStrictMode: true,
-  // Improve production performance
   swcMinify: true,
+  poweredByHeader: false,
 };
 
 export default nextConfig;

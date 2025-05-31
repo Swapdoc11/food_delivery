@@ -31,50 +31,48 @@ export default function TableBillingClient({ tableId }) {
     const [search, setSearch] = useState('');
     const [error, setError] = useState(null);
 
-    // Move all hooks to the top level
+    // All useSelector hooks at the top level
     const isInitialized = useSelector(selectIsInitialized);
     const allTables = useSelector(selectTables);
-    const tableItems = useSelector(state => selectTableItems(state, tableId)) || [];
-    
-    const tables = useMemo(() => {
-        return Array.from({ length: 9 }, (_, i) => i + 1);
-    }, []);
+    const items = useSelector(state => selectTableItems(state, tableId));
+    const tableItems = items || [];
 
-    // Calculate totals using useMemo to optimize performance
-    const subtotal = useMemo(() => {
-        return tableItems.reduce((total, item) => total + (item.price * item.qty), 0);
-    }, [tableItems]);
+    // Constants and computed values using useMemo
+    const tables = useMemo(() => (
+        Array.from({ length: 9 }, (_, i) => i + 1)
+    ), []);
 
-    const gst = useMemo(() => {
-        return subtotal * 0.18; // 18% GST
-    }, [subtotal]);
+    const subtotal = useMemo(() => (
+        tableItems.reduce((total, item) => total + (item.price * item.qty), 0)
+    ), [tableItems]);
 
-    const total = useMemo(() => {
-        return subtotal + gst;
-    }, [subtotal, gst]);
+    const gst = useMemo(() => subtotal * 0.18, [subtotal]);
+    const total = useMemo(() => subtotal + gst, [subtotal, gst]);
 
-    // Initialize table state
+    // Initialize table state only once on mount and when tableId changes
     useEffect(() => {
-        dispatch(initializeTableState());
-        
-        if (tableId) {
+        const initTable = async () => {
+            if (!isInitialized) {
+                await dispatch(initializeTableState());
+            }
+            
             try {
                 dispatch(setActiveTable(tableId));
             } catch (err) {
                 console.error('Error setting active table:', err);
                 setError('Failed to load table data');
             }
-        } else {
-            console.log('No tableId, redirecting to tables');
-            setError('Invalid table ID');
-        }
+        };
 
+        initTable();
+
+        // Cleanup function
         return () => {
             dispatch(setActiveTable(null));
         };
-    }, [tableId, dispatch]);
+    }, [dispatch, tableId, isInitialized]);
 
-    // Handler functions using useCallback
+    // Navigation handlers
     const handleTableSwitch = useCallback((newTableId) => {
         router.push(`/dashboard/billing/${newTableId}`);
     }, [router]);
