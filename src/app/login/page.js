@@ -171,7 +171,7 @@ export default function LoginPage() {
                                 href="/register"
                                 className="text-sm text-indigo-600 hover:text-indigo-500 font-medium transition duration-150 ease-in-out"
                             >
-                                Don't have an account? 
+                                Don&apos;t have an account? 
                                 <span className="ml-1 font-semibold hover:underline">
                                     Register now
                                 </span>

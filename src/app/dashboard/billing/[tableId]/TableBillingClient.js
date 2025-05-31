@@ -31,20 +31,22 @@ export default function TableBillingClient({ tableId }) {
     const [search, setSearch] = useState('');
     const [error, setError] = useState(null);
     
-    // Group all useSelector hooks together
+    // Group all useSelector hooks at the top level
     const isInitialized = useSelector(selectIsInitialized);
     const allTables = useSelector(selectTables);
-    const tableItems = useSelector(state => selectTableItems(state, tableId));
+    const tableItems = useSelector(state => selectTableItems(state, tableId)) || [];
     
     const tables = Array.from({ length: 9 }, (_, i) => i + 1);
 
-    // Calculate totals with useMemo to optimize performance
+    // Calculate totals with useCallback to optimize performance
     const calculateSubTotal = useCallback(() => {
+        if (!tableItems.length) return 0;
         return tableItems.reduce((total, item) => total + (item.price * item.qty), 0);
     }, [tableItems]);
 
     const calculateGST = useCallback(() => {
-        return calculateSubTotal() * 0.18; // 18% GST
+        const subtotal = calculateSubTotal();
+        return subtotal * 0.18; // 18% GST
     }, [calculateSubTotal]);
 
     const calculateTotal = useCallback(() => {
@@ -53,6 +55,8 @@ export default function TableBillingClient({ tableId }) {
 
     // Initialize table state
     useEffect(() => {
+        dispatch(initializeTableState());
+        
         if (!tableId) {
             console.log('No tableId, redirecting to tables');
             setError('Invalid table ID');
@@ -60,13 +64,15 @@ export default function TableBillingClient({ tableId }) {
         }
 
         try {
-            dispatch(initializeTableState());
             dispatch(setActiveTable(tableId));
-            return () => dispatch(setActiveTable(null));
         } catch (err) {
             console.error('Error setting active table:', err);
             setError('Failed to load table data');
         }
+
+        return () => {
+            dispatch(setActiveTable(null));
+        };
     }, [tableId, dispatch]);
 
     // Handler functions using useCallback to prevent unnecessary rerenders

@@ -91,6 +91,19 @@ export function useAuth() {
     validateToken();
   }, [getValidAccessToken, dispatch]);
 
+  // Only check token if we're supposed to be authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      // Create interval to check token validity
+      const interval = setInterval(async () => {
+        await getValidAccessToken();
+      }, 5 * 60 * 1000); // Check every 5 minutes
+
+      // Clean up interval on unmount
+      return () => clearInterval(interval);
+    }
+  }, [isAuthenticated, getValidAccessToken]);
+
   // Return authenticated state and methods
   return {
     accessToken,
