@@ -4,190 +4,290 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useDispatch, useSelector } from 'react-redux';
 import { 
-    addItemToTable,
-    removeItemFromTable,
-    updateItemQuantity,
-    clearTable,
+    fetchTables,
+    updateTableStatus,
+    createOrder,
+    completeOrder,
     setActiveTable,
-    selectTableItems,
-    selectTableTotal,
+    updateItemQuantity,
+    addItemToOrder,
     selectTables,
-    selectIsInitialized,
-    initializeTableState
+    selectActiveTable,
+    selectCurrentOrder,
+    selectTableLoading,
+    selectTableError 
 } from '@/slices/tableSlice';
-
-const dummyProducts = [
-    { id: 1, name: 'Burger', price: 149 },
-    { id: 2, name: 'Pizza', price: 299 },
-    { id: 3, name: 'Pasta', price: 199 },
-    { id: 4, name: 'French Fries', price: 99 },
-    { id: 5, name: 'Fries', price: 69 },
-    { id: 6, name: 'Sandwich', price: 129 },
-];
+import { API_BASE_URL } from '@/utils/api';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
 export default function TableBillingClient({ tableId }) {
     const router = useRouter();
     const dispatch = useDispatch();
     const [search, setSearch] = useState('');
     const [error, setError] = useState(null);
+    const [products, setProducts] = useState([]);
+    const [loading, setLoading] = useState(true);    // Redux selectors
+    const tablesMap = useSelector(selectTables);
+    const activeTable = useSelector(selectActiveTable);
+    const currentOrder = useSelector(selectCurrentOrder);
+    const isLoading = useSelector(selectTableLoading);
+    const tableError = useSelector(selectTableError);    // Convert tables object to array for rendering
+    const tables = Object.values(tablesMap).sort((a, b) => a.tableNumber - b.tableNumber);
 
-    // All useSelector hooks at the top level
-    const isInitialized = useSelector(selectIsInitialized);
-    const allTables = useSelector(selectTables);
-    const items = useSelector(state => selectTableItems(state, tableId));
-    const tableItems = items || [];
-
-    // Constants and computed values using useMemo
-    const tables = useMemo(() => (
-        Array.from({ length: 9 }, (_, i) => i + 1)
-    ), []);
-
-    const subtotal = useMemo(() => (
-        tableItems.reduce((total, item) => total + (item.price * item.qty), 0)
-    ), [tableItems]);
-
-    const gst = useMemo(() => subtotal * 0.18, [subtotal]);
-    const total = useMemo(() => subtotal + gst, [subtotal, gst]);
-
-    // Initialize table state only once on mount and when tableId changes
+    // Fetch tables and products on component mount and set active table
     useEffect(() => {
-        const initTable = async () => {
-            if (!isInitialized) {
-                await dispatch(initializeTableState());
-            }
-            
+        const initialize = async () => {
             try {
-                dispatch(setActiveTable(tableId));
+                await dispatch(fetchTables()).unwrap();
+                // Set active table after fetching tables
+                dispatch(setActiveTable(parseInt(tableId)));
+                
+                const res = await fetch(`${API_BASE_URL}/products`);
+                const data = await res.json();
+                setProducts(data.products || []);
             } catch (err) {
-                console.error('Error setting active table:', err);
-                setError('Failed to load table data');
+                console.error('Error initializing:', err);
+                setError('Failed to load data');
+            } finally {
+                setLoading(false);
             }
         };
 
-        initTable();
+        initialize();
+    }, [dispatch, tableId]);// Handle adding item to order
+    const handleAddItem = useCallback(async (product) => {
+        try {
+            const tableNum = parseInt(tableId);
+            if (!currentOrder) {
+                // Create new order
+                await dispatch(createOrder({
+                    tableNumber: tableNum,
+                    items: [{ 
+                        product: product._id,
+                        name: product.name,
+                        quantity: 1,
+                        price: product.price
+                    }],
+                    servedBy: 'Staff'
+                })).unwrap();
+            } else {
+                // Update existing order in Redux only
+                dispatch(addItemToOrder({
+                    tableId: tableNum,
+                    item: {
+                        product: product._id,
+                        name: product.name,
+                        quantity: 1,
+                        price: product.price
+                    }
+                }));
+            }
+        } catch (err) {
+            console.error('Error adding item:', err);
+            setError('Failed to add item to order');
+        }
+    }, [dispatch, tableId, currentOrder]);
 
-        // Cleanup function
-        return () => {
-            dispatch(setActiveTable(null));
-        };
-    }, [dispatch, tableId, isInitialized]);
+    // Handle completing the order
+    const handleCompleteOrder = useCallback(async () => {
+        if (!currentOrder) return;
 
-    // Navigation handlers
-    const handleTableSwitch = useCallback((newTableId) => {
-        router.push(`/dashboard/billing/${newTableId}`);
-    }, [router]);
+        try {
+            await dispatch(completeOrder({
+                orderId: currentOrder._id,
+                paymentMethod: 'cash' // You might want to add payment method selection
+            })).unwrap();
 
-    const handleClearTable = useCallback(() => {
-        dispatch(clearTable({ tableId }));
-        alert('Table cleared successfully!');
+            // Clear the current order and reset table status
+            await dispatch(updateTableStatus({
+                tableNumber: parseInt(tableId),
+                status: 'available',
+                currentOrder: null
+            })).unwrap();
+        } catch (err) {
+            console.error('Error completing order:', err);
+            setError('Failed to complete order');
+        }
+    }, [dispatch, tableId, currentOrder]);
+
+    // Handle clearing the table
+    const handleClearTable = useCallback(async () => {
+        if (!currentOrder) return;
+
+        if (!window.confirm('Are you sure you want to clear this table? This will complete the current order.')) {
+            return;
+        }
+
+        try {
+            // First complete the order
+            await dispatch(completeOrder({
+                orderId: currentOrder._id,
+                paymentMethod: 'cash' // Default to cash payment
+            })).unwrap();
+
+            // Then update table status
+            await dispatch(updateTableStatus({
+                tableNumber: parseInt(tableId),
+                status: 'available',
+                currentOrder: null
+            })).unwrap();
+
+            // Show success message
+            alert('Table cleared successfully!');
+        } catch (err) {
+            console.error('Error clearing table:', err);
+            alert('Failed to clear table: ' + err.message);
+        }
+    }, [dispatch, tableId, currentOrder]);    // Handle printing the bill
+    const handlePrint = useCallback(async () => {
+        if (!currentOrder) return;
+
+        try {
+            // Save the current order state to backend
+            const res = await fetch(`${API_BASE_URL}/orders`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    orderId: currentOrder._id,
+                    items: currentOrder.items
+                })
+            });
+
+            if (!res.ok) throw new Error('Failed to save order');
+            const data = await res.json();
+            
+            // Update Redux with the saved order
+            dispatch(updateTableStatus({
+                tableNumber: parseInt(tableId),
+                status: 'engaged',
+                currentOrder: data.order
+            }));
+
+            // Create a new window for printing
+            const printWindow = window.open('', '_blank');
+            if (!printWindow) {
+                alert('Please allow popups to print the bill');
+                return;
+            }
+        const billContent = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Bill - Table ${tableId}</title>
+                <style>
+                    body { font-family: Arial, sans-serif; padding: 20px; max-width: 400px; margin: 0 auto; }
+                    .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 10px; }
+                    .restaurant-name { font-size: 24px; font-weight: bold; margin-bottom: 5px; }
+                    .info { font-size: 14px; color: #666; }
+                    .items-header { display: grid; grid-template-columns: 40% 20% 20% 20%; font-weight: bold; margin-bottom: 10px; font-size: 14px; border-bottom: 1px solid #ddd; padding-bottom: 5px; }
+                    .item { display: grid; grid-template-columns: 40% 20% 20% 20%; margin: 5px 0; font-size: 14px; }
+                    .totals { margin-top: 20px; border-top: 1px solid #000; padding-top: 10px; }
+                    .total-row { display: flex; justify-content: space-between; margin: 5px 0; font-size: 14px; }
+                    .grand-total { font-weight: bold; font-size: 16px; margin-top: 10px; padding-top: 10px; border-top: 1px solid #000; }
+                    .footer { margin-top: 30px; text-align: center; font-size: 12px; color: #666; }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <div class="restaurant-name">Food Delivery</div>                    <div class="info">Table ${tableId}</div>
+                    <div class="info">Date: ${new Date().toLocaleString()}</div>
+                    <div class="info">Order #: ${currentOrder?._id?.slice(-6) || 'New'}</div>
+                </div>
+                <div class="items-header">
+                    <div>Item</div>
+                    <div>Rate</div>
+                    <div>Qty</div>
+                    <div>Amount</div>
+                </div>                <div class="items">
+                    ${currentOrder?.items?.map(item => {
+                        const product = products.find(p => p._id === item.product);
+                        const productName = product ? product.name : item.name || 'Unknown Item';
+                        return `
+                            <div class="item">
+                                <div>${productName}</div>
+                                <div>₹${item.price.toFixed(2)}</div>
+                                <div>${item.quantity}</div>
+                                <div>₹${(item.price * item.quantity).toFixed(2)}</div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+                <div class="totals">
+                    <div class="total-row">
+                        <span>Subtotal:</span>                        <span>₹${currentOrder?.subtotal?.toFixed(2) || '0.00'}</span>
+                    </div>
+                    <div class="total-row">
+                        <span>GST (18%):</span>
+                        <span>₹${currentOrder?.gst?.toFixed(2) || '0.00'}</span>
+                    </div>
+                    <div class="total-row grand-total">
+                        <span>Total:</span>
+                        <span>₹${currentOrder?.total?.toFixed(2) || '0.00'}</span>
+                    </div>
+                </div>
+                <div class="footer">
+                    <p>Thank you for dining with us!</p>
+                    <p>Please visit again</p>
+                </div>
+            </body>
+            </html>
+        `;            // Write and print
+            printWindow.document.write(billContent);
+            printWindow.document.close();
+            printWindow.print();
+        } catch (err) {
+            console.error('Error printing bill:', err);
+            setError('Failed to print bill');
+        }
+    }, [tableId, currentOrder, dispatch, products]);
+
+    // Filter products based on search
+    const filteredProducts = useMemo(() => {
+        return products.filter(product =>
+            product.name.toLowerCase().includes(search.toLowerCase())
+        );
+    }, [products, search]);    // Handle updating item quantity
+    const handleUpdateQuantity = useCallback((itemId, newQuantity) => {
+        dispatch(updateItemQuantity({ 
+            tableId: parseInt(tableId), 
+            itemId, 
+            quantity: newQuantity 
+        }));
     }, [dispatch, tableId]);
 
-    const handlePrint = useCallback(() => {
-        const printContents = `
-            <div style="max-width:500px;margin:auto;padding:20px;font-family:system-ui,-apple-system,sans-serif;">
-                <div style="text-align:center;padding-bottom:20px;border-bottom:2px solid #4f46e5;">
-                    <h2 style="margin:0;color:#4f46e5;font-size:24px;">Food Delivery</h2>
-                    <div style="font-size:14px;color:#666;margin-top:8px;">Table ${tableId}</div>
-                    <div style="font-size:12px;color:#666;margin-top:4px;">${new Date().toLocaleString()}</div>
-                </div>
-                
-                <div style="margin-top:20px;">
-                    <table style="width:100%;border-collapse:collapse;">
-                        <thead>
-                            <tr style="border-bottom:1px solid #eee;">
-                                <th style="text-align:left;padding:8px 0;">Item</th>
-                                <th style="text-align:center;padding:8px 0;">Qty</th>
-                                <th style="text-align:right;padding:8px 0;">Price</th>
-                                <th style="text-align:right;padding:8px 0;">Total</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${tableItems.map(item => `
-                                <tr style="border-bottom:1px solid #f4f4f4;">
-                                    <td style="padding:8px 0;">${item.name}</td>
-                                    <td style="text-align:center;">${item.qty}</td>
-                                    <td style="text-align:right;">₹${item.price}</td>
-                                    <td style="text-align:right;">₹${(item.price * item.qty).toFixed(2)}</td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
-                </div>
-
-                <div style="margin-top:20px;padding-top:20px;border-top:1px solid #eee;">
-                    <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
-                        <span style="color:#666;">Subtotal:</span>
-                        <span>₹${subtotal.toFixed(2)}</span>
-                    </div>
-                    <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
-                        <span style="color:#666;">GST (18%):</span>
-                        <span>₹${gst.toFixed(2)}</span>
-                    </div>
-                    <div style="display:flex;justify-content:space-between;margin-top:12px;padding-top:12px;border-top:1px dashed #eee;font-weight:bold;">
-                        <span>Total:</span>
-                        <span>₹${total.toFixed(2)}</span>
-                    </div>
-                </div>
-
-                <div style="margin-top:30px;text-align:center;padding-top:20px;border-top:2px solid #4f46e5;">
-                    <div style="font-weight:500;">Thank you for dining with us!</div>
-                    <div style="font-size:12px;color:#666;margin-top:4px;">Please visit again</div>
-                </div>
-            </div>
-        `;
-
-        const printWindow = window.open('', '', 'height=600,width=800');
-        printWindow.document.write('<html><head><title>Bill</title>');
-        printWindow.document.write('</head><body>');
-        printWindow.document.write(printContents);
-        printWindow.document.write('</body></html>');
-        printWindow.document.close();
-        printWindow.focus();
-        setTimeout(() => {
-            printWindow.print();
-            printWindow.close();
-        }, 250);
-    }, [tableId, tableItems, subtotal, gst, total]);
-
-    // Show loading state while initializing
-    if (!isInitialized) {
-        return (
-            <div className="flex items-center justify-center min-h-screen">
-                <div className="text-lg text-gray-600">Loading...</div>
-            </div>
-        );
+    if (loading || isLoading) {
+        return <LoadingSpinner message="Loading table data..." />;
     }
 
-    if (error) {
+    if (error || tableError) {
         return (
             <div className="flex items-center justify-center min-h-screen">
-                <div className="text-red-600">{error}</div>
+                <div className="text-red-600">{error || tableError}</div>
             </div>
         );
     }
 
     return (
         <div className="max-w-7xl mx-auto p-6">
-            {/* Table Switcher */}
-            <div className="mb-8 overflow-x-auto">
+            {/* Table Switcher */}            <div className="mb-8 overflow-x-auto">
                 <div className="flex space-x-2 pb-4">
-                    {tables.map(num => (
-                        <button
-                            key={num}
-                            onClick={() => handleTableSwitch(num)}
-                            className={`
+                    {tables.map(table => (                            <button
+                                key={table._id}
+                                onClick={() => {
+                                    dispatch(setActiveTable(table.tableNumber));
+                                    router.push(`/dashboard/billing/${table.tableNumber}`);
+                                }}
+                                className={`
                                 px-4 py-2 rounded-lg flex flex-col items-center min-w-[100px]
-                                ${num === parseInt(tableId) 
+                                ${table.tableNumber === parseInt(tableId) 
                                     ? 'bg-indigo-600 text-white' 
                                     : 'bg-white border hover:border-indigo-300'
                                 }
-                                ${allTables[num]?.length > 0 ? 'border-red-300' : 'border-gray-200'}
+                                ${table.currentOrder ? 'border-red-300' : 'border-gray-200'}
                             `}
-                        >
-                            <span className="font-medium">Table {num}</span>
-                            <span className="text-xs mt-1">
-                                {allTables[num]?.length > 0 
-                                    ? `${allTables[num].length} items` 
+                        >                            <span className="font-medium">Table {table.tableNumber}</span>                            <span className="text-xs mt-1">
+                                {table.currentOrder?.items?.length 
+                                    ? `${table.currentOrder.items.length} items` 
                                     : 'Empty'}
                             </span>
                         </button>
@@ -233,22 +333,13 @@ export default function TableBillingClient({ tableId }) {
 
                         {/* Products Grid */}
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {dummyProducts.filter(product =>
-                                product.name.toLowerCase().includes((search || '').toLowerCase())
-                            ).map((product) => (
-                                <div key={product.id} className="border border-gray-200 p-4 rounded-lg hover:shadow-md transition-shadow">
+                            {filteredProducts.map((product) => (
+                                <div key={product._id} className="border border-gray-200 p-4 rounded-lg hover:shadow-md transition-shadow">
                                     <div className="flex flex-col items-center">
                                         <h3 className="font-medium text-gray-900 mb-1">{product.name}</h3>
                                         <p className="text-gray-600 text-sm mb-3">₹{product.price.toFixed(2)}</p>
                                         <button
-                                            onClick={() => {
-                                                try {
-                                                    dispatch(addItemToTable({ tableId, item: product }));
-                                                } catch (err) {
-                                                    console.error('Error adding item to cart:', err);
-                                                    setError('Failed to add item to cart');
-                                                }
-                                            }}
+                                            onClick={() => handleAddItem(product)}
                                             className="w-full inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
                                         >
                                             Add to Order
@@ -264,61 +355,61 @@ export default function TableBillingClient({ tableId }) {
                 <div className="lg:w-[450px]">
                     <div className="bg-white rounded-xl shadow-sm border p-6">
                         <h2 className="text-lg font-semibold text-gray-900 mb-4">Order Summary</h2>
-                        
-                        {tableItems.length === 0 ? (
+                          {!currentOrder?.items?.length ? (
                             <div className="text-center text-gray-500 py-8">
                                 No items in the order yet
                             </div>
                         ) : (
-                            <div className="space-y-4">
-                                {/* Order items */}
+                            <div className="space-y-4">                                {/* Order items */}
                                 <div className="space-y-3">
-                                    {tableItems.map((item) => (
-                                        <div key={item.id} className="flex items-center justify-between">
-                                            <div>
-                                                <h3 className="font-medium">{item.name}</h3>
-                                                <p className="text-sm text-gray-600">₹{item.price}</p>
+                                    {currentOrder.items.map((item, index) => {
+                                        // Find the corresponding product to get the name
+                                        const product = products.find(p => p._id === item.product);
+                                        const productName = product ? product.name : item.name || 'Unknown Item';
+                                        
+                                        return (
+                                            <div key={`${item.product}-${index}`} className="flex items-center justify-between py-2">
+                                                <div className="flex-1">
+                                                    <h3 className="font-medium">{productName}</h3>
+                                                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                                                        <span>₹{item.price} × {item.quantity}</span>
+                                                        <span>=</span>
+                                                        <span className="font-medium">₹{(item.price * item.quantity).toFixed(2)}</span>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-3 ml-4">
+                                                    <button
+                                                        onClick={() => handleUpdateQuantity(item.product, Math.max(0, item.quantity - 1))}
+                                                        className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 border border-gray-200"
+                                                    >
+                                                        <span className="text-gray-600">−</span>
+                                                    </button>
+                                                    <span className="w-6 text-center">{item.quantity}</span>
+                                                    <button
+                                                        onClick={() => handleUpdateQuantity(item.product, item.quantity + 1)}
+                                                        className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 border border-gray-200"
+                                                    >
+                                                        <span className="text-gray-600">+</span>
+                                                    </button>
+                                                </div>
                                             </div>
-                                            <div className="flex items-center gap-2">
-                                                <button
-                                                    onClick={() => dispatch(updateItemQuantity({ 
-                                                        tableId, 
-                                                        itemId: item.id, 
-                                                        quantity: Math.max(0, item.qty - 1)
-                                                    }))}
-                                                    className="p-1 rounded hover:bg-gray-100"
-                                                >
-                                                    -
-                                                </button>
-                                                <span>{item.qty}</span>
-                                                <button
-                                                    onClick={() => dispatch(updateItemQuantity({
-                                                        tableId,
-                                                        itemId: item.id,
-                                                        quantity: item.qty + 1
-                                                    }))}
-                                                    className="p-1 rounded hover:bg-gray-100"
-                                                >
-                                                    +
-                                                </button>
-                                            </div>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
 
                                 {/* Totals */}
                                 <div className="border-t pt-4 mt-4">
                                     <div className="flex justify-between text-sm">
                                         <span className="text-gray-600">Subtotal:</span>
-                                        <span className="font-medium">₹{subtotal.toFixed(2)}</span>
+                                        <span className="font-medium">₹{currentOrder.subtotal.toFixed(2)}</span>
                                     </div>
                                     <div className="flex justify-between text-sm mt-2">
                                         <span className="text-gray-600">GST (18%):</span>
-                                        <span className="font-medium">₹{gst.toFixed(2)}</span>
+                                        <span className="font-medium">₹{currentOrder.gst.toFixed(2)}</span>
                                     </div>
                                     <div className="flex justify-between text-lg font-semibold mt-4 pt-4 border-t text-indigo-600">
                                         <span>Total:</span>
-                                        <span>₹{total.toFixed(2)}</span>
+                                        <span>₹{currentOrder.total.toFixed(2)}</span>
                                     </div>
                                 </div>
 

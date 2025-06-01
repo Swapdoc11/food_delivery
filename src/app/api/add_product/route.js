@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import Product from "../../lib/add_product";
-import mongoose from "mongoose";
-import { MONGODB_URI } from "@/app/lib/db";
+import { connectDB } from "@/app/lib/db";
 
 export async function POST(req) {
     try {
@@ -36,11 +35,9 @@ export async function POST(req) {
         );
     }
 }
-export async function GET() {
-    try {
-        // await connectDB();
+export async function GET() {    try {
+        await connectDB();
         console.log("MongoDB connected");
-        await mongoose.connect(MONGODB_URI)
         const products = await Product.find().sort({ createdAt: -1 });
         return NextResponse.json({ products }, { status: 200 });
     } catch (error) {

@@ -9,21 +9,25 @@ const nextConfig = {
     ignoreBuildErrors: true
   },
   images: {
-    domains: ['localhost', 'food-delivery-lilac-eight.vercel.app'],
+    domains: ['localhost', 'food-delivery-lilac-eight.vercel.app', 'res.cloudinary.com'],
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: '**',
+        hostname: 'res.cloudinary.com',
+        pathname: '/dijkpvobx/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'food-delivery-khaki-eta.vercel.app',
       },
       {
         protocol: 'http',
-        hostname: '**',
+        hostname: 'localhost',
       },
     ],
   },
   // Other performance optimizations
   reactStrictMode: true,
-  swcMinify: true,
   poweredByHeader: false,
 };
 

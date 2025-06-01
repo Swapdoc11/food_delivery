@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import User from "@/app/lib/user";
-import { MONGODB_URI } from "@/app/lib/db";
+import { connectDB } from "@/app/lib/db";
 
 const JWT_SECRET = process.env.JWT_SECRET || "supersecretkey";
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || "refreshsupersecretkey";
@@ -22,9 +22,8 @@ function generateTokens(user) {
     return { accessToken, refreshToken };
 }
 
-export async function POST(req) {
-    try {
-        await mongoose.connect(MONGODB_URI);
+export async function POST(req) {    try {
+        await connectDB();
         const data = await req.json();
         const { email, password } = data;
         if (!email || !password) {

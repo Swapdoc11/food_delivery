@@ -2,14 +2,13 @@ import { NextResponse } from "next/server";
 import mongoose from "mongoose";
 import jwt from "jsonwebtoken";
 import User from "@/app/lib/user";
-import { MONGODB_URI } from "@/app/lib/db";
+import { connectDB } from "@/app/lib/db";
 
 const JWT_SECRET = process.env.JWT_SECRET || "supersecretkey";
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || "refreshsupersecretkey";
 
-export async function POST(req) {
-    try {
-        await mongoose.connect(MONGODB_URI);
+export async function POST(req) {    try {
+        await connectDB();
         const { refreshToken } = await req.json();
         if (!refreshToken) {
             return NextResponse.json({ error: "Refresh token required." }, { status: 400 });

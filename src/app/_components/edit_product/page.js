@@ -2,6 +2,7 @@
 import { API_BASE_URL } from '@/utils/api'
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
+import { getValidImageUrl } from '@/utils/imageUtils'
 
 
 export default function ProductTable() {
@@ -15,18 +16,22 @@ export default function ProductTable() {
     useEffect(() => {
         const fetchProducts = async () => {
             try {
-                const res = await fetch(`${API_BASE_URL}/add_product`)
-                const data = await res.json()
-                // If your API returns { products: [...] }
-                setProducts(data.products || [])
+                const res = await fetch(`${API_BASE_URL}/products`);
+                if (!res.ok) {
+                    throw new Error('Failed to fetch products');
+                }
+                const data = await res.json();
+                setProducts(data.products || []);
             } catch (err) {
-                setProducts([])
+                console.error('Error fetching products:', err);
+                alert('Failed to load products. Please try again later.');
+                setProducts([]);
             } finally {
-                setLoading(false)
+                setLoading(false);
             }
-        }
-        fetchProducts()
-    }, [])
+        };
+        fetchProducts();
+    }, []);
 
     // Handle search
     const handleSearch = (event) => {
@@ -44,15 +49,72 @@ export default function ProductTable() {
         setIsEditModalOpen(true)
     }
 
-    // Handle save changes (local only, not persisted to API)
-    const handleSave = (e) => {
-        e.preventDefault()
-        const updatedProducts = products.map(product =>
-            product._id === editingProduct._id ? editingProduct : product
-        )
-        setProducts(updatedProducts)
-        setIsEditModalOpen(false)
-    }
+    // Handle saving edited product
+    const handleSave = async (e) => {
+        e.preventDefault();
+        try {
+            const res = await fetch(`${API_BASE_URL}/products`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(editingProduct),
+            });
+
+            if (!res.ok) {
+                throw new Error('Failed to update product');
+            }
+
+            const updatedData = await res.json();
+            
+            // Update local state with the updated product
+            setProducts(products.map(product =>
+                product._id === editingProduct._id ? updatedData.product : product
+            ));
+
+            // Close modal and reset editing state
+            setIsEditModalOpen(false);
+            setEditingProduct(null);
+
+            // Show success message
+            alert('Product updated successfully!');
+        } catch (error) {
+            console.error('Error updating product:', error);
+            alert('Failed to update product. Please try again.');
+        }
+    };
+
+    // Handle product deletion
+    const handleDelete = async (productId) => {
+        if (!confirm('Are you sure you want to delete this product?')) {
+            return;
+        }
+
+        try {
+            const res = await fetch(`${API_BASE_URL}/products?id=${productId}`, {
+                method: 'DELETE',
+            });
+
+            if (!res.ok) {
+                throw new Error('Failed to delete product');
+            }
+
+            // Update local state by removing the deleted product
+            setProducts(products.filter(p => p._id !== productId));
+            
+            // Close modal if the deleted product was being edited
+            if (editingProduct?._id === productId) {
+                setIsEditModalOpen(false);
+                setEditingProduct(null);
+            }
+
+            // Show success message
+            alert('Product deleted successfully!');
+        } catch (error) {
+            console.error('Error deleting product:', error);
+            alert('Failed to delete product. Please try again.');
+        }
+    };
 
     return (
         <div className="max-w-7xl mx-auto">
@@ -114,14 +176,16 @@ export default function ProductTable() {
                             ) : (
                                 filteredProducts.map(product => (
                                     <tr key={product._id}>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="relative h-16 w-16">
+                                        <td className="px-6 py-4 whitespace-nowrap">                                            <div className="relative h-16 w-16">
                                                 <Image
-                                                    src={product.image || '/foodie.png'}
+                                                    src={getValidImageUrl(product.image)}
                                                     alt={product.name}
                                                     fill
                                                     className="object-cover rounded-lg"
                                                     sizes="64px"
+                                                    onError={(e) => {
+                                                        e.currentTarget.src = '/foodie.png';
+                                                    }}
                                                 />
                                             </div>
                                         </td>
@@ -140,9 +204,15 @@ export default function ProductTable() {
                                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                             <button
                                                 onClick={() => handleEdit(product)}
-                                                className="text-indigo-600 hover:text-indigo-900 focus:outline-none focus:underline"
+                                                className="text-indigo-600 hover:text-indigo-900 focus:outline-none focus:underline mr-4"
                                             >
                                                 Edit
+                                            </button>
+                                            <button
+                                                onClick={() => handleDelete(product._id)}
+                                                className="text-red-600 hover:text-red-900 focus:outline-none focus:underline"
+                                            >
+                                                Delete
                                             </button>
                                         </td>
                                     </tr>

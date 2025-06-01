@@ -1,14 +1,38 @@
 import mongoose from "mongoose";
 
+const MONGODB_URI = process.env.MONGODB_URI || "mongodb+srv://swapnilsendme:Swapdoc22@cluster0.4ccrbz4.mongodb.net/food-delivery?retryWrites=true&w=majority&appName=Cluster0";
 
-export const MONGODB_URI = "mongodb+srv://swapnilsendme:Swapdoc22@cluster0.4ccrbz4.mongodb.net/food-delivery?retryWrites=true&w=majority&appName=Cluster0"
+if (!MONGODB_URI) {
+    throw new Error('Please define the MONGODB_URI environment variable inside .env.local');
+}
 
+let cached = global.mongoose;
 
-// export async function connectDB() {
-//     // if (mongoose.connection.readyState >= 1) return;
-        
-//     return mongoose.connect(MONGODB_URI,{useNewUrlParser: true, useUnifiedTopology: true})
-//         .then(() => console.log("MongoDB connected"))
-//         .catch((err) => console.error("MongoDB connection error:", err));
+if (!cached) {
+    cached = global.mongoose = { conn: null, promise: null };
+}
 
-// }
+export async function connectDB() {
+    if (cached.conn) {
+        return cached.conn;
+    }
+
+    if (!cached.promise) {
+        const opts = {
+            bufferCommands: false,
+        };
+
+        cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
+            return mongoose;
+        });
+    }
+
+    try {
+        cached.conn = await cached.promise;
+    } catch (e) {
+        cached.promise = null;
+        throw e;
+    }
+
+    return cached.conn;
+}

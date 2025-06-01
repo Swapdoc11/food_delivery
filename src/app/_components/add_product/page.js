@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import { API_BASE_URL } from "@/utils/api";
 import Image from "next/image";
+import { getValidImageUrl } from "@/utils/imageUtils";
 
 export default function AddProductForm() {
     const [form, setForm] = useState({
@@ -19,41 +20,59 @@ export default function AddProductForm() {
             ...prev,
             [name]: files ? files[0] : value,
         }));
+    };    const uploadToCloudinary = async (file) => {
+        try {
+            if (!file) return null;
+
+            // Validate file type
+            if (!file.type.startsWith('image/')) {
+                throw new Error('Please upload an image file');
+            }
+
+            // Validate file size (max 5MB)
+            if (file.size > 5 * 1024 * 1024) {
+                throw new Error('Image size should be less than 5MB');
+            }
+
+            const data = new FormData();
+            data.append("file", file);
+            data.append("upload_preset", "foodie"); // set in your Cloudinary dashboard
+
+            const res = await fetch("https://api.cloudinary.com/v1_1/dijkpvobx/image/upload", {
+                method: "POST",
+                body: data,
+            });
+
+            if (!res.ok) {
+                throw new Error('Failed to upload image');
+            }
+
+            const json = await res.json();
+            if (!json.secure_url) {
+                throw new Error('No image URL received');
+            }
+
+            return getValidImageUrl(json.secure_url);
+        } catch (error) {
+            console.error('Error uploading image:', error);
+            throw new Error(`Image upload failed: ${error.message}`);
+        }
     };
-
-    // Add this function to upload image to Cloudinary
-    async function uploadToCloudinary(file) {
-        const data = new FormData();
-        data.append("file", file);
-        data.append("upload_preset", "foodie"); // set in your Cloudinary dashboard
-
-        const res = await fetch("https://api.cloudinary.com/v1_1/dijkpvobx/image/upload", {
-            method: "POST",
-            body: data,
-        });
-        const json = await res.json();
-        console.log(json);
-        
-        return json.secure_url; // This is the image URL
-    }
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
 
         try {
-            let imageUrl = "";
-            if (form.image) {
-                imageUrl = await uploadToCloudinary(form.image);
-            }
-
-            const res = await fetch(`${API_BASE_URL}/add_product`, {
+            let imageUrl = form.image ? await uploadToCloudinary(form.image) : '/foodie.png';
+            
+            const res = await fetch(`${API_BASE_URL}/products`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     name: form.name,
                     description: form.description,
-                    price: form.price,
+                    price: parseFloat(form.price),
                     category: form.category,
                     image: imageUrl,
                 }),
